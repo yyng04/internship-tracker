@@ -82,7 +82,7 @@ export function Stats() {
           <div className="text-zinc-600 dark:text-zinc-300">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={weekly} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid stroke="#71717a" strokeOpacity={0.25} vertical={false} />
+                <CartesianGrid stroke="#696965" strokeOpacity={0.4} vertical={false} />
                 <XAxis dataKey="week" tick={{ fill: 'currentColor', fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis
                   allowDecimals={false}
@@ -91,14 +91,14 @@ export function Stats() {
                   axisLine={false}
                 />
                 <Tooltip
-                  cursor={{ fill: '#71717a', fillOpacity: 0.12 }}
+                  cursor={{ fill: '#bfbdb4', fillOpacity: 0.12 }}
                   wrapperClassName="rounded border border-zinc-200 bg-white text-sm shadow dark:border-zinc-700 dark:bg-zinc-900"
                   contentStyle={{ background: 'transparent', border: 'none' }}
                   labelStyle={{ color: 'inherit' }}
                   itemStyle={{ color: 'inherit' }}
                   formatter={(v) => [v, 'Applied']}
                 />
-                <Bar dataKey="count" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#eee5d0" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -107,7 +107,7 @@ export function Stats() {
         <Card>
           <SectionTitle>Funnel</SectionTitle>
           <p className="mb-3 text-xs text-zinc-500">
-            Counts every application that reached a stage at any point, so later stages are subsets of earlier ones.
+            Counts every application that reached each stage. Applications may skip stages.
           </p>
           <ul className="space-y-2">
             {funnel.map((r) => (

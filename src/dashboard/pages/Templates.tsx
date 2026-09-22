@@ -41,10 +41,12 @@ export function Templates() {
   const [dirty, setDirty] = useState(false)
   const [showSample, setShowSample] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   // Lets the editor show for a brand new template when the list is empty.
   const [draftOpen, setDraftOpen] = useState(false)
 
   const load = (t: Template | null) => {
+    setError('')
     setSelectedId(t?.id ?? null)
     setName(t?.name ?? '')
     setBody(t?.body ?? '')
@@ -68,6 +70,7 @@ export function Templates() {
   const save = async () => {
     const trimmed = name.trim() || 'Untitled template'
     setSaving(true)
+    setError('')
     try {
       if (selectedId) {
         await updateTemplate(selectedId, { name: trimmed, body })
@@ -77,6 +80,8 @@ export function Templates() {
       }
       setName(trimmed)
       setDirty(false)
+    } catch {
+      setError('Could not save the template. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -85,20 +90,32 @@ export function Templates() {
   const remove = async () => {
     if (!selectedId) return
     if (!confirmDialog(`Delete template "${name || 'Untitled template'}"? Cover letters made from it are kept.`)) return
-    await deleteTemplate(selectedId)
-    load(null)
-    setDraftOpen(false)
+    try {
+      await deleteTemplate(selectedId)
+      load(null)
+      setDraftOpen(false)
+    } catch {
+      setError('Could not delete the template. Please try again.')
+    }
   }
 
   // Duplicates what is currently in the editor, including unsaved edits.
   const duplicate = async () => {
-    const t = await addTemplate({ name: `${name.trim() || 'Untitled template'} (copy)`, body })
-    load(t)
+    try {
+      const t = await addTemplate({ name: `${name.trim() || 'Untitled template'} (copy)`, body })
+      load(t)
+    } catch {
+      setError('Could not duplicate the template. Please try again.')
+    }
   }
 
   const createStarter = async () => {
-    const t = await addTemplate({ name: STARTER_NAME, body: STARTER_BODY })
-    load(t)
+    try {
+      const t = await addTemplate({ name: STARTER_NAME, body: STARTER_BODY })
+      load(t)
+    } catch {
+      setError('Could not create the starter template. Please try again.')
+    }
   }
 
   const sampleVars: Record<string, string | undefined> = {
@@ -114,6 +131,7 @@ export function Templates() {
 
   const hasTemplates = templates.length > 0
   const showEditor = hasTemplates || draftOpen
+  const editing = selectedId !== null || draftOpen
 
   return (
     <div>
@@ -126,6 +144,7 @@ export function Templates() {
           </Button>
         }
       />
+      {error && <p role="alert" className="mb-4 text-sm text-red-400">{error}</p>}
 
       {!showEditor ? (
         <EmptyState
@@ -141,8 +160,8 @@ export function Templates() {
           }
         />
       ) : (
-        <div className="flex gap-5">
-          <aside className="w-64 shrink-0">
+        <div className="flex flex-col gap-5 lg:flex-row">
+          <aside className="w-full shrink-0 lg:w-64">
             {hasTemplates ? (
               <ul className="space-y-1">
                 {templates.map((t) => (
@@ -169,6 +188,15 @@ export function Templates() {
             )}
           </aside>
 
+          {!editing ? (
+            <div className="min-w-0 flex-1">
+              <EmptyState
+                title="Choose a template"
+                body="Select a saved template to edit it, or create a new one."
+                action={<Button onClick={startNew}>New template</Button>}
+              />
+            </div>
+          ) : (
           <div className="min-w-0 flex-1 space-y-4">
             <Field label="Name">
               <Input
@@ -230,6 +258,7 @@ export function Templates() {
               </Card>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

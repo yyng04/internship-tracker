@@ -121,7 +121,7 @@ export function Popup() {
           <div className="capture-state">
             <span className="capture-success-mark" aria-hidden="true">✓</span>
             <h1>Added to {STATUS_LABELS[status].toLowerCase()}</h1>
-            <p>{job.title} at {job.company} is in your tracker.</p>
+            <p>{job.title}{job.company.trim() ? ` at ${job.company.trim()}` : ''} is in your tracker.</p>
             <button type="button" className="capture-primary" onClick={() => openDashboard('/app/' + savedId)}>
               View application <span aria-hidden="true">↗</span>
             </button>
@@ -199,7 +199,7 @@ export function Popup() {
               {saving ? 'Saving…' : duplicate ? 'Already in tracker' : 'Add to tracker'}
               {!saving && !duplicate && <span aria-hidden="true">→</span>}
             </button>
-            <p className="capture-footnote">Stored in this Brave profile.</p>
+            <p className="capture-footnote">Stored in this browser profile.</p>
           </form>
         )}
       </main>

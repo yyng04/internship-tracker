@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/schema'
-import { deleteApplication, setStatus, updateApplication } from '../../db/repo'
+import { assignCoverLetter, deleteApplication, setStatus, unlinkApplicationCoverLetter, updateApplication } from '../../db/repo'
 import { STATUSES, STATUS_LABELS, type Application, type Status } from '../../types'
 import { copyText, daysBetween, fmtDate, todayISO } from '../../lib/utils'
 import {
@@ -199,7 +199,7 @@ export function ApplicationDetail() {
                 <Link to={`/letters/${a.coverLetterId}`} className="truncate text-indigo-600 underline">
                   {linked?.title ?? 'Untitled letter'}
                 </Link>
-                <Button size="sm" onClick={() => updateApplication(a.id, { coverLetterId: undefined })}>
+                <Button size="sm" onClick={() => void unlinkApplicationCoverLetter(a.id)}>
                   Unlink
                 </Button>
               </div>
@@ -208,7 +208,7 @@ export function ApplicationDetail() {
                 <Select
                   value=""
                   onChange={(e) => {
-                    if (e.target.value) updateApplication(a.id, { coverLetterId: e.target.value })
+                    if (e.target.value) void assignCoverLetter(e.target.value, a.id)
                   }}
                   aria-label="Link a cover letter"
                 >

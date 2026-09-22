@@ -6,6 +6,7 @@ import {
   exportBackup,
   getSettings,
   importBackup,
+  isBackup,
   saveSettings,
   wipeAll,
 } from '../../db/repo'
@@ -150,9 +151,11 @@ function BackupCard() {
     if (!file) return
     setNotice(null)
     try {
-      setPending(JSON.parse(await file.text()))
+      const parsed: unknown = JSON.parse(await file.text())
+      if (!isBackup(parsed)) throw new Error('Not a valid Internship Tracker backup file')
+      setPending(parsed)
     } catch (err) {
-      setNotice({ kind: 'error', text: `Could not read that file as JSON: ${errMsg(err)}` })
+      setNotice({ kind: 'error', text: `Could not import that file: ${errMsg(err)}` })
     }
   }
 

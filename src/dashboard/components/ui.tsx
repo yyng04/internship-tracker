@@ -117,10 +117,13 @@ export function Modal({
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-6" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-3 sm:p-6" onMouseDown={onClose}>
       <div
         className={cx('w-full rounded-lg bg-white p-5 shadow-xl dark:bg-zinc-900', wide ? 'max-w-3xl' : 'max-w-lg')}
         onMouseDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold">{title}</h2>

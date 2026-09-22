@@ -35,7 +35,7 @@ type Draft = Omit<ApplicationFormValues, 'tags' | 'appliedAt' | 'deadline' | 'fo
 
 function toDraft(initial?: Partial<Application>): Draft {
   return {
-    company: initial?.company ?? '',
+    company: initial?.company === 'Unspecified company' ? '' : initial?.company ?? '',
     role: initial?.role ?? '',
     location: initial?.location ?? '',
     url: initial?.url ?? '',
@@ -65,17 +65,19 @@ export function ApplicationForm({
 }) {
   const [d, setD] = useState<Draft>(() => toDraft(initial))
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setD((p) => ({ ...p, [key]: value }))
 
-  const valid = d.company.trim().length > 0 && d.role.trim().length > 0
+  const valid = d.role.trim().length > 0
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!valid || busy) return
     setBusy(true)
+    setError('')
     try {
       await onSubmit({
-        company: d.company.trim(),
+        company: d.company.trim() || 'Unspecified company',
         role: d.role.trim(),
         location: d.location.trim(),
         url: d.url.trim(),
@@ -91,6 +93,8 @@ export function ApplicationForm({
           .filter(Boolean),
         notes: d.notes,
       })
+    } catch {
+      setError('Could not save the application. Please try again.')
     } finally {
       setBusy(false)
     }
@@ -99,11 +103,11 @@ export function ApplicationForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Company *">
-          <Input value={d.company} onChange={(e) => set('company', e.target.value)} autoFocus required />
+        <Field label="Company (optional)">
+          <Input value={d.company} onChange={(e) => set('company', e.target.value)} autoFocus />
         </Field>
         <Field label="Role *">
-          <Input value={d.role} onChange={(e) => set('role', e.target.value)} required />
+          <Textarea value={d.role} onChange={(e) => set('role', e.target.value)} rows={2} required className="min-h-16 resize-y" />
         </Field>
         <Field label="Location">
           <Input value={d.location} onChange={(e) => set('location', e.target.value)} />
@@ -148,6 +152,7 @@ export function ApplicationForm({
       <Field label="Notes">
         <Textarea value={d.notes} onChange={(e) => set('notes', e.target.value)} />
       </Field>
+      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
