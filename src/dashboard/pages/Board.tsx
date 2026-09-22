@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type DragEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/schema'
 import { addApplication, setStatus } from '../../db/repo'
@@ -315,7 +315,11 @@ function Table({ apps, today }: { apps: Application[]; today: string }) {
               onClick={() => navigate(`/app/${a.id}`)}
               className="cursor-pointer border-t border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/60"
             >
-              <td className="px-3 py-2 font-medium">{a.company}</td>
+              <td className="px-3 py-2 font-medium">
+                <Link to={`/app/${a.id}`} onClick={(e) => e.stopPropagation()} className="rounded underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+                  {a.company}
+                </Link>
+              </td>
               <td className="px-3 py-2">{a.role}</td>
               <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{a.location}</td>
               <td className="px-3 py-2">

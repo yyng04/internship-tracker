@@ -23,20 +23,20 @@ export function App() {
   const total = useLiveQuery(() => db.applications.count(), [], 0)
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-52 shrink-0 border-r border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-6">
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <aside className="w-full shrink-0 border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 md:w-52 md:border-r md:border-b-0">
+        <div className="mb-3 md:mb-6">
           <div className="text-sm font-semibold">Internship Tracker</div>
           <div className="text-xs text-zinc-500">{total} application{total === 1 ? "" : "s"}</div>
         </div>
-        <nav className="space-y-1">
+        <nav className="flex gap-1 overflow-x-auto md:block md:space-y-1" aria-label="Main navigation">
           {NAV.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
               className={({ isActive }) =>
                 cx(
-                  'block rounded px-3 py-1.5 text-sm',
+                  'block shrink-0 whitespace-nowrap rounded px-3 py-1.5 text-sm',
                   isActive
                     ? 'bg-indigo-600 text-zinc-950'
                     : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800',
@@ -48,7 +48,7 @@ export function App() {
           ))}
         </nav>
       </aside>
-      <main className="min-w-0 flex-1 p-6">
+      <main className="min-w-0 flex-1 p-4 md:p-6">
         <Routes>
           <Route path="/" element={<Navigate to="/board" replace />} />
           <Route path="/board" element={<Board />} />

@@ -4,7 +4,7 @@ import { db } from '../../db/schema'
 import { EMPTY_PROFILE, deleteFile, getProfile, saveProfile, storeFile } from '../../db/repo'
 import { copyText, download, fmtDate } from '../../lib/utils'
 import type { Profile as ProfileRow, StoredFile } from '../../types'
-import { Button, Card, Field, Input, PageHeader, confirmDialog } from '../components/ui'
+import { Button, Card, Field, Input, PageHeader, Textarea, confirmDialog } from '../components/ui'
 import { FileDrop } from '../components/FileDrop'
 
 type TextKey = Exclude<keyof ProfileRow, 'id' | 'bullets'>
@@ -32,6 +32,7 @@ function fmtSize(bytes: number) {
 /** Copy button that flips its label to "Copied" for a moment. */
 function CopyButton({ text, size = 'sm' }: { text: string; size?: 'sm' | 'md' }) {
   const [done, setDone] = useState(false)
+  const [failed, setFailed] = useState(false)
   useEffect(() => {
     if (!done) return
     const t = setTimeout(() => setDone(false), 1500)
@@ -42,10 +43,11 @@ function CopyButton({ text, size = 'sm' }: { text: string; size?: 'sm' | 'md' })
       variant="ghost"
       size={size}
       onClick={() => {
-        copyText(text).then(() => setDone(true))
+        setFailed(false)
+        void copyText(text).then(() => setDone(true)).catch(() => setFailed(true))
       }}
     >
-      {done ? 'Copied' : 'Copy'}
+      {done ? 'Copied' : failed ? 'Copy failed' : 'Copy'}
     </Button>
   )
 }
@@ -55,6 +57,8 @@ export function Profile() {
   const [profile, setProfile] = useState<ProfileRow>(EMPTY_PROFILE)
   const [persisted, setPersisted] = useState<ProfileRow>(EMPTY_PROFILE)
   const [savedFlash, setSavedFlash] = useState(false)
+  const [profileError, setProfileError] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -86,51 +90,79 @@ export function Profile() {
   }
 
   async function onSave() {
-    await persist(profile)
-    setSavedFlash(true)
-  }
-
-  // Bullets write the full current state (including unsaved field edits) and clear dirty;
-  // this keeps one source of truth instead of merging two partial saves.
-  async function setBullets(bullets: string[]) {
-    const next = { ...profile, bullets }
-    setProfile(next)
-    await persist(next)
+    setSavingProfile(true)
+    setProfileError('')
+    try {
+      await persist(profile)
+      setSavedFlash(true)
+    } catch {
+      setProfileError('Could not save your profile. Please try again.')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   // ----- bullets -----
   const [newBullet, setNewBullet] = useState('')
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState('')
+  const [bulletBusy, setBulletBusy] = useState(false)
+  const [bulletError, setBulletError] = useState('')
 
-  function addBullet() {
+  // Save bullets without silently saving unrelated profile fields still in draft.
+  async function setBullets(bullets: string[]): Promise<boolean> {
+    setBulletBusy(true)
+    setBulletError('')
+    try {
+      const next = { ...persisted, bullets }
+      await saveProfile(next)
+      setPersisted(next)
+      setProfile((current) => ({ ...current, bullets }))
+      return true
+    } catch {
+      setBulletError('Could not save the bullet. Please try again.')
+      return false
+    } finally {
+      setBulletBusy(false)
+    }
+  }
+
+  async function addBullet() {
     const text = newBullet.trim()
-    if (!text) return
-    setNewBullet('')
-    void setBullets([...profile.bullets, text])
+    if (!text || bulletBusy || savingProfile || editIdx !== null) return
+    if (await setBullets([...profile.bullets, text])) setNewBullet('')
   }
 
   function startEdit(i: number) {
+    setBulletError('')
     setEditIdx(i)
     setEditDraft(profile.bullets[i] ?? '')
   }
 
-  function commitEdit() {
-    if (editIdx === null) return
+  async function commitEdit() {
+    if (editIdx === null || savingProfile || bulletBusy) return
     const text = editDraft.trim()
     const i = editIdx
-    setEditIdx(null)
-    if (!text || text === profile.bullets[i]) return
+    if (!text) {
+      setBulletError('A bullet cannot be empty. Use Remove to delete it.')
+      return
+    }
+    if (text === profile.bullets[i]) {
+      setEditIdx(null)
+      return
+    }
     const next = profile.bullets.slice()
     next[i] = text
-    void setBullets(next)
+    if (await setBullets(next)) setEditIdx(null)
   }
 
   function removeBullet(i: number) {
+    if (savingProfile || bulletBusy) return
     void setBullets(profile.bullets.filter((_, j) => j !== i))
   }
 
   function moveBullet(i: number, dir: -1 | 1) {
+    if (savingProfile || bulletBusy) return
     const j = i + dir
     if (j < 0 || j >= profile.bullets.length) return
     const next = profile.bullets.slice()
@@ -140,9 +172,16 @@ export function Profile() {
     void setBullets(next)
   }
 
-  function onEditKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') commitEdit()
-    if (e.key === 'Escape') setEditIdx(null)
+  function onEditKey(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      void commitEdit()
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setEditIdx(null)
+      setBulletError('')
+    }
   }
 
   // ----- resumes -----
@@ -190,11 +229,12 @@ export function Profile() {
               <h2 className="text-base font-semibold">Profile</h2>
               <div className="flex items-center gap-2">
                 {savedFlash && <span className="text-xs text-green-600 dark:text-green-400">Saved</span>}
-                <Button variant="primary" onClick={onSave} disabled={!dirty}>
-                  Save
+                <Button variant="primary" onClick={onSave} disabled={!dirty || savingProfile || bulletBusy}>
+                  {savingProfile ? 'Saving…' : 'Save'}
                 </Button>
               </div>
             </div>
+            {profileError && <p role="alert" className="mb-3 text-sm text-red-400">{profileError}</p>}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {FIELDS.map((f) => (
@@ -233,19 +273,20 @@ export function Profile() {
           <Card>
             <h2 className="text-base font-semibold">Reusable bullets</h2>
             <p className="mt-0.5 text-sm text-zinc-500">Resume lines you paste into application forms.</p>
+            {bulletError && <p role="alert" className="mt-3 text-sm text-red-400">{bulletError}</p>}
 
             {profile.bullets.length === 0 ? (
               <p className="mt-3 text-sm text-zinc-500">No bullets yet.</p>
             ) : (
               <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
                 {profile.bullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 py-2">
-                    <div className="flex shrink-0 flex-col">
+                  <li key={i} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-2 py-3">
+                    <div className="row-span-2 flex flex-col">
                       <Button
                         variant="ghost"
                         size="sm"
                         aria-label="Move up"
-                        disabled={i === 0}
+                        disabled={i === 0 || bulletBusy || savingProfile || editIdx !== null}
                         onClick={() => moveBullet(i, -1)}
                       >
                         ↑
@@ -254,56 +295,77 @@ export function Profile() {
                         variant="ghost"
                         size="sm"
                         aria-label="Move down"
-                        disabled={i === profile.bullets.length - 1}
+                        disabled={i === profile.bullets.length - 1 || bulletBusy || savingProfile || editIdx !== null}
                         onClick={() => moveBullet(i, 1)}
                       >
                         ↓
                       </Button>
                     </div>
-                    <div className="min-w-0 flex-1 pt-1">
+                    <div className="min-w-0">
                       {editIdx === i ? (
-                        <Input
+                        <Textarea
                           autoFocus
+                          aria-label={`Edit bullet ${i + 1}`}
                           value={editDraft}
                           onChange={(e) => setEditDraft(e.target.value)}
                           onKeyDown={onEditKey}
-                          onBlur={commitEdit}
+                          className="min-h-24 resize-y leading-relaxed"
                         />
                       ) : (
-                        <p className="text-sm">{b}</p>
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{b}</p>
                       )}
                     </div>
-                    <div className="flex shrink-0 gap-1 pt-0.5">
-                      <CopyButton text={b} />
-                      <Button variant="ghost" size="sm" onClick={() => startEdit(i)}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 dark:text-red-400"
-                        onClick={() => removeBullet(i)}
-                      >
-                        Remove
-                      </Button>
+                    <div className="col-start-2 flex flex-wrap justify-end gap-1">
+                      {editIdx === i ? (
+                        <>
+                          <Button variant="ghost" size="sm" disabled={bulletBusy || savingProfile} onClick={() => setEditIdx(null)}>Cancel</Button>
+                          <Button variant="primary" size="sm" disabled={bulletBusy || savingProfile || !editDraft.trim()} onClick={() => void commitEdit()}>
+                            {bulletBusy ? 'Saving…' : 'Save bullet'}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <CopyButton text={b} />
+                          <Button variant="ghost" size="sm" disabled={bulletBusy || savingProfile || editIdx !== null} onClick={() => startEdit(i)}>
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 dark:text-red-400"
+                            disabled={bulletBusy || savingProfile || editIdx !== null}
+                            onClick={() => removeBullet(i)}
+                          >
+                            Remove
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}
               </ul>
             )}
 
-            <div className="mt-3 flex gap-2">
-              <Input
+            <div className="mt-3 space-y-2">
+              <Textarea
+                aria-label="New reusable bullet"
                 value={newBullet}
                 placeholder="Built a React dashboard used by 200 students..."
                 onChange={(e) => setNewBullet(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') addBullet()
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault()
+                    void addBullet()
+                  }
                 }}
+                className="min-h-20 resize-y leading-relaxed"
               />
-              <Button variant="primary" onClick={addBullet} disabled={!newBullet.trim()}>
-                Add
-              </Button>
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 text-xs text-zinc-500">Use Enter for a new line · Ctrl/⌘ + Enter to add</span>
+                <Button variant="primary" className="shrink-0 whitespace-nowrap" onClick={() => void addBullet()} disabled={!newBullet.trim() || bulletBusy || savingProfile || editIdx !== null}>
+                  {bulletBusy ? 'Saving…' : 'Add bullet'}
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

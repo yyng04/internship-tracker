@@ -3,6 +3,10 @@ body {
   margin: 0;
 }
 
+@media (max-width: 387px) {
+  body { width: 100%; }
+}
+
 .capture-popup {
   --surface: #111214;
   --field: #1b1c1f;

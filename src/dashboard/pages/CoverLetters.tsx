@@ -4,10 +4,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/schema'
 import {
   addCoverLetter,
+  assignCoverLetter,
   deleteCoverLetter,
   getProfile,
   renderTemplate,
-  updateApplication,
   updateCoverLetter,
 } from '../../db/repo'
 import { markdownToPlain } from '../../lib/markdown'
@@ -50,8 +50,10 @@ export function CoverLetters() {
   const [formTitle, setFormTitle] = useState('Untitled')
   const [titleTouched, setTitleTouched] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   const openModal = (appId = '') => {
+    setCreateError('')
     setFormAppId(appId)
     setFormTemplateId('')
     setFormTitle('Untitled')
@@ -79,6 +81,7 @@ export function CoverLetters() {
 
   const create = async () => {
     setCreating(true)
+    setCreateError('')
     try {
       const app = appById.get(formAppId)
       const tpl = templates.find((t) => t.id === formTemplateId)
@@ -101,6 +104,8 @@ export function CoverLetters() {
       })
       setModalOpen(false)
       navigate(`/letters/${cl.id}`, { replace: Boolean(forParam) })
+    } catch {
+      setCreateError('Could not create the cover letter. Please try again.')
     } finally {
       setCreating(false)
     }
@@ -130,8 +135,8 @@ export function CoverLetters() {
           }
         />
       ) : (
-        <div className="flex gap-5">
-          <aside className="w-72 shrink-0">
+        <div className="flex flex-col gap-5 lg:flex-row">
+          <aside className="w-full shrink-0 lg:w-72">
             <ul className="space-y-1">
               {letters.map((l) => {
                 const active = l.id === id
@@ -201,6 +206,7 @@ export function CoverLetters() {
               }}
             />
           </Field>
+          {createError && <p role="alert" className="text-sm text-red-400">{createError}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Button onClick={closeModal}>Cancel</Button>
             <Button variant="primary" onClick={create} disabled={creating}>
@@ -225,21 +231,29 @@ function LetterEditor({
 }) {
   const [title, setTitle] = useState(letter.title)
   const [body, setBody] = useState(letter.body)
-  const [saveState, setSaveState] = useState<'saved' | 'pending' | 'saving'>('saved')
+  const [saveState, setSaveState] = useState<'saved' | 'pending' | 'saving' | 'error'>('saved')
   const [copied, setCopied] = useState(false)
   const lastSavedBody = useRef(letter.body)
   const latestBody = useRef(letter.body)
-  latestBody.current = body
+
+  const changeBody = (next: string) => {
+    latestBody.current = next
+    setBody(next)
+    setSaveState('pending')
+  }
 
   // Debounced autosave of the body, 600ms after the last keystroke.
   useEffect(() => {
     if (body === lastSavedBody.current) return
-    setSaveState('pending')
     const t = setTimeout(async () => {
       setSaveState('saving')
-      await updateCoverLetter(letter.id, { body })
-      lastSavedBody.current = body
-      setSaveState('saved')
+      try {
+        await updateCoverLetter(letter.id, { body })
+        lastSavedBody.current = body
+        setSaveState('saved')
+      } catch {
+        setSaveState('error')
+      }
     }, 600)
     return () => clearTimeout(t)
   }, [body, letter.id])
@@ -248,7 +262,7 @@ function LetterEditor({
   useEffect(() => {
     return () => {
       if (latestBody.current !== lastSavedBody.current) {
-        void updateCoverLetter(letter.id, { body: latestBody.current })
+        void updateCoverLetter(letter.id, { body: latestBody.current }).catch(() => {})
       }
     }
   }, [letter.id])
@@ -256,29 +270,44 @@ function LetterEditor({
   const saveTitle = async () => {
     const t = title.trim() || 'Untitled'
     setTitle(t)
-    if (t !== letter.title) await updateCoverLetter(letter.id, { title: t })
+    if (t !== letter.title) {
+      try {
+        await updateCoverLetter(letter.id, { title: t })
+      } catch {
+        setSaveState('error')
+      }
+    }
   }
 
   const relink = async (nextAppId: string) => {
-    const prev = letter.applicationId
     const next = nextAppId || undefined
-    if (prev === next) return
-    if (prev) await updateApplication(prev, { coverLetterId: undefined })
-    await updateCoverLetter(letter.id, { applicationId: next })
-    if (next) await updateApplication(next, { coverLetterId: letter.id })
+    if (letter.applicationId === next) return
+    try {
+      await assignCoverLetter(letter.id, next)
+    } catch {
+      setSaveState('error')
+    }
   }
 
   const copy = async () => {
-    await copyText(markdownToPlain(body))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    try {
+      await copyText(markdownToPlain(body))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+    }
   }
 
   const remove = async () => {
     if (!confirmDialog(`Delete "${letter.title || 'Untitled'}"? This cannot be undone.`)) return
-    lastSavedBody.current = latestBody.current // stop the unmount flush from resurrecting it
-    await deleteCoverLetter(letter.id)
-    onDeleted()
+    try {
+      await deleteCoverLetter(letter.id)
+      lastSavedBody.current = latestBody.current // stop the unmount flush from resurrecting it
+      onDeleted()
+    } catch {
+      setSaveState('error')
+    }
   }
 
   const linkedApp = letter.applicationId ? apps.find((a) => a.id === letter.applicationId) : undefined
@@ -304,7 +333,7 @@ function LetterEditor({
         </Field>
       </div>
 
-      <MarkdownEditor value={body} onChange={setBody} placeholder="Write the cover letter in markdown." />
+      <MarkdownEditor value={body} onChange={changeBody} placeholder="Write the cover letter in markdown." />
 
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</Button>
@@ -316,7 +345,7 @@ function LetterEditor({
           Delete
         </Button>
         <span className="ml-auto text-xs text-zinc-500">
-          {saveState === 'saved' ? `Saved ${fmtDate(letter.updatedAt)}` : 'Saving...'}
+          {saveState === 'saved' ? `Saved ${fmtDate(letter.updatedAt)}` : saveState === 'error' ? 'Change failed — try again' : 'Saving...'}
         </span>
       </div>
     </div>

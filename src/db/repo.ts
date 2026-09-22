@@ -93,8 +93,44 @@ export async function addCoverLetter(
   const ts = now()
   const cl: CoverLetter = { ...input, id: uid(), createdAt: ts, updatedAt: ts }
   await db.coverLetters.add(cl)
-  if (cl.applicationId) await db.applications.update(cl.applicationId, { coverLetterId: cl.id })
+  if (cl.applicationId) await assignCoverLetter(cl.id, cl.applicationId)
   return cl
+}
+
+/** Keep the application and letter links in sync when either side changes. */
+export async function assignCoverLetter(letterId: string, applicationId?: string) {
+  await db.transaction('rw', db.applications, db.coverLetters, async () => {
+    const letter = await db.coverLetters.get(letterId)
+    if (!letter) throw new Error('Cover letter not found')
+    const ts = now()
+
+    await db.applications.where('coverLetterId').equals(letterId).modify({ coverLetterId: undefined, updatedAt: ts })
+
+    if (applicationId) {
+      const application = await db.applications.get(applicationId)
+      if (!application) throw new Error('Application not found')
+      if (application.coverLetterId && application.coverLetterId !== letterId) {
+        const oldLetter = await db.coverLetters.get(application.coverLetterId)
+        if (oldLetter?.applicationId === applicationId) {
+          await db.coverLetters.update(oldLetter.id, { applicationId: undefined, updatedAt: ts })
+        }
+      }
+      await db.applications.update(applicationId, { coverLetterId: letterId, updatedAt: ts })
+    }
+    await db.coverLetters.update(letterId, { applicationId, updatedAt: ts })
+  })
+  notifyChanged()
+}
+
+export async function unlinkApplicationCoverLetter(applicationId: string) {
+  const application = await db.applications.get(applicationId)
+  if (!application?.coverLetterId) return
+  const letter = await db.coverLetters.get(application.coverLetterId)
+  if (letter) await assignCoverLetter(letter.id)
+  else {
+    await db.applications.update(applicationId, { coverLetterId: undefined, updatedAt: now() })
+    notifyChanged()
+  }
 }
 
 export async function updateCoverLetter(id: string, patch: Partial<CoverLetter>) {
@@ -244,11 +280,22 @@ export async function exportBackup(): Promise<Backup> {
   }
 }
 
-export async function importBackup(raw: unknown, mode: 'replace' | 'merge') {
+export function isBackup(raw: unknown): raw is Backup {
   const b = raw as Backup
-  if (!b || b.version !== 1 || !Array.isArray(b.applications)) {
+  return Boolean(
+    b && b.version === 1 &&
+    Array.isArray(b.applications) && Array.isArray(b.coverLetters) &&
+    Array.isArray(b.templates) && Array.isArray(b.files) &&
+    b.settings && typeof b.settings === 'object' &&
+    (b.profile === null || (b.profile && typeof b.profile === 'object')),
+  )
+}
+
+export async function importBackup(raw: unknown, mode: 'replace' | 'merge') {
+  if (!isBackup(raw)) {
     throw new Error('Not a valid Internship Tracker backup file')
   }
+  const b = raw
   await db.transaction(
     'rw',
     [db.applications, db.coverLetters, db.templates, db.profile, db.files, db.settings],
