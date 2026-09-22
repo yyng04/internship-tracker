@@ -1,15 +1,34 @@
 @import "tailwindcss";
 
+/* A single palette for the dashboard. The dark variant is fixed so the
+   extension looks the same regardless of the browser's system theme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-zinc-50: #faf7ef;
+  --color-zinc-100: #f3efe5;
+  --color-zinc-200: #e7e2d4;
+  --color-zinc-300: #d2d0c6;
+  --color-zinc-400: #bfbdb4;
+  --color-zinc-500: #a5a39a;
+  --color-zinc-600: #696965;
+  --color-zinc-700: #414246;
+  --color-zinc-800: #292a2d;
+  --color-zinc-900: #1b1c1f;
+  --color-zinc-950: #111214;
+  --color-indigo-50: #292a2d;
+  --color-indigo-100: #414246;
+  --color-indigo-400: #f2e9d6;
+  --color-indigo-500: #ede0c2;
+  --color-indigo-600: #eee5d0;
+  --color-indigo-700: #d6c9ad;
+  --color-indigo-950: #33332f;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 body {
-  @apply bg-zinc-50 text-zinc-900 antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-zinc-950 text-zinc-100;
-  }
+  @apply bg-zinc-950 text-zinc-100 antialiased;
 }

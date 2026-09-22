@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/schema'
 import { addApplication, listDue } from '../db/repo'
@@ -7,11 +7,34 @@ import { SOURCES, STATUSES, STATUS_LABELS, type CapturedJob, type Source, type S
 
 type Phase = 'loading' | 'form' | 'saved' | 'unsupported'
 
+const EMPTY_JOB: CapturedJob = { title: '', company: '', url: '', location: '', source: 'other' }
+
+function siteName(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'Current page'
+  }
+}
+
+function companyFromUrl(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase()
+    if (host === 'lifeattiktok.com' || host.endsWith('.lifeattiktok.com')) return 'TikTok'
+    return ''
+  } catch {
+    return ''
+  }
+}
+
 export function Popup() {
   const [phase, setPhase] = useState<Phase>('loading')
-  const [job, setJob] = useState<CapturedJob>({ title: '', company: '', url: '', location: '', source: 'other' })
-  const [status, setStatus] = useState<Status>('applied')
+  const [job, setJob] = useState<CapturedJob>(EMPTY_JOB)
+  const [status, setStatus] = useState<Status>('wishlist')
   const [dueCount, setDueCount] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [savedId, setSavedId] = useState('')
 
   const total = useLiveQuery(() => db.applications.count(), [], 0)
   const duplicate = useLiveQuery(
@@ -20,7 +43,7 @@ export function Popup() {
   )
 
   useEffect(() => {
-    listDue().then((d) => setDueCount(d.length))
+    void listDue().then((due) => setDueCount(due.length))
     ;(async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       if (!tab?.id || !tab.url || !/^https?:/.test(tab.url)) {
@@ -28,134 +51,158 @@ export function Popup() {
         return
       }
       try {
-        const res = (await chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_JOB' })) as CapturedJob
-        setJob(res)
+        const captured = (await chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_JOB' })) as CapturedJob
+        setJob({ ...captured, company: captured.company || companyFromUrl(captured.url) })
       } catch {
-        // content script not injected (page loaded before install); fall back to tab info
-        setJob({ title: tab.title ?? '', company: '', url: tab.url, location: '', source: 'other' })
+        // The current tab may have been loaded before the extension was installed.
+        setJob({ title: tab.title ?? '', company: companyFromUrl(tab.url), url: tab.url, location: '', source: 'other' })
       }
       setPhase('form')
     })()
   }, [])
 
-  async function save() {
-    await addApplication({
-      company: job.company.trim(),
-      role: job.title.trim(),
-      location: job.location.trim(),
-      url: job.url,
-      source: job.source,
-      status,
-      appliedAt: status === 'applied' ? todayISO() : undefined,
-    })
-    setPhase('saved')
+  function update(key: keyof CapturedJob, value: string) {
+    setJob((current) => ({ ...current, [key]: value }))
+    setError('')
   }
 
-  const field = (label: string, key: keyof CapturedJob) => (
-    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-      {label}
-      <input
-        className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-        value={job[key]}
-        onChange={(e) => setJob({ ...job, [key]: e.target.value })}
-      />
-    </label>
-  )
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (saving || duplicate || !job.title.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const application = await addApplication({
+        company: job.company.trim() || 'Unspecified company',
+        role: job.title.trim(),
+        location: job.location.trim(),
+        url: job.url.trim(),
+        source: job.source,
+        status,
+        appliedAt: status === 'applied' ? todayISO() : undefined,
+      })
+      setSavedId(application.id)
+      setPhase('saved')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save this role. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div className="p-4">
-      <header className="mb-3 flex items-center justify-between">
-        <h1 className="text-base font-semibold">Internship Tracker</h1>
-        <button
-          onClick={() => openDashboard()}
-          className="rounded bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-700"
-        >
-          Open dashboard
+    <div className="capture-popup">
+      <header className="capture-header">
+        <div className="capture-brand"><span className="capture-mark" aria-hidden="true" />Internship Tracker</div>
+        <button type="button" className="capture-header-link" onClick={() => openDashboard()}>
+          Dashboard <span aria-hidden="true">↗</span>
         </button>
       </header>
 
-      <div className="mb-3 flex gap-2 text-xs text-zinc-500">
-        <span>{total} tracked</span>
-        {dueCount > 0 && (
-          <button className="text-red-600 underline" onClick={() => openDashboard('/board?filter=due')}>
-            {dueCount} need attention
-          </button>
-        )}
-      </div>
-
-      {phase === 'loading' && <p className="text-sm text-zinc-500">Reading page...</p>}
-
-      {phase === 'unsupported' && (
-        <p className="text-sm text-zinc-500">
-          Open a job listing in a normal tab to capture it, or add applications from the dashboard.
-        </p>
-      )}
-
-      {phase === 'saved' && (
-        <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-          Saved {job.company || 'application'}.
-          <button className="ml-2 underline" onClick={() => openDashboard('/board')}>
-            View
-          </button>
+      <main className="capture-main">
+        <div className="capture-context">
+          <span>{phase === 'form' ? 'REVIEW CAPTURE' : 'YOUR TRACKER'}</span>
+          <span>{total} saved{dueCount > 0 ? ' · ' + dueCount + ' due' : ''}</span>
         </div>
-      )}
 
-      {phase === 'form' && (
-        <form
-          className="space-y-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void save()
-          }}
-        >
-          {duplicate && (
-            <p className="rounded bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              Already tracked as {duplicate.company} ({STATUS_LABELS[duplicate.status]}).
-            </p>
-          )}
-          {field('Company', 'company')}
-          {field('Role', 'title')}
-          {field('Location', 'location')}
-          {field('URL', 'url')}
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              Status
-              <select
-                className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Status)}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              Source
-              <select
-                className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                value={job.source}
-                onChange={(e) => setJob({ ...job, source: e.target.value as Source })}
-              >
-                {SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
+        {phase === 'loading' && <p className="capture-message">Reading this page…</p>}
+
+        {phase === 'unsupported' && (
+          <div className="capture-state">
+            <h1>Open a job listing</h1>
+            <p>Capture works on regular web pages. You can also add a role from the dashboard.</p>
+            <button type="button" className="capture-primary" onClick={() => openDashboard()}>
+              Open dashboard <span aria-hidden="true">↗</span>
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={!job.company.trim() || !job.title.trim()}
-            className="mt-2 w-full rounded bg-indigo-600 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            Save application
-          </button>
-        </form>
-      )}
+        )}
+
+        {phase === 'saved' && (
+          <div className="capture-state">
+            <span className="capture-success-mark" aria-hidden="true">✓</span>
+            <h1>Added to {STATUS_LABELS[status].toLowerCase()}</h1>
+            <p>{job.title} at {job.company} is in your tracker.</p>
+            <button type="button" className="capture-primary" onClick={() => openDashboard('/app/' + savedId)}>
+              View application <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+        )}
+
+        {phase === 'form' && (
+          <form onSubmit={save}>
+            <div className="capture-heading">
+              <h1>Save this role</h1>
+              <p>Check the details before adding it to your tracker.</p>
+            </div>
+
+            {duplicate && (
+              <div className="capture-duplicate" role="status">
+                <div>
+                  <strong>Already tracked</strong>
+                  <span>{duplicate.company} · {STATUS_LABELS[duplicate.status]}</span>
+                </div>
+                <button type="button" onClick={() => openDashboard('/app/' + duplicate.id)}>View ↗</button>
+              </div>
+            )}
+
+            <div className="capture-fields">
+              <label className="capture-field">
+                <span>Role</span>
+                <textarea
+                  rows={2}
+                  value={job.title}
+                  onChange={(event) => update('title', event.target.value)}
+                  placeholder="Job title"
+                  required
+                  className="capture-role"
+                />
+              </label>
+
+              <div className="capture-field-pair">
+                <label className="capture-field">
+                  <span>Company <em>(optional)</em></span>
+                  <input value={job.company} onChange={(event) => update('company', event.target.value)} placeholder="Company (optional)" />
+                </label>
+                <label className="capture-field">
+                  <span>Location <em>(optional)</em></span>
+                  <input value={job.location} onChange={(event) => update('location', event.target.value)} placeholder="Add location" />
+                </label>
+              </div>
+
+              <label className="capture-field">
+                <span>Stage</span>
+                <select value={status} onChange={(event) => setStatus(event.target.value as Status)}>
+                  {STATUSES.map((stage) => <option key={stage} value={stage}>{STATUS_LABELS[stage]}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <details className="capture-details">
+              <summary>Listing link &amp; source <span>{siteName(job.url)}</span></summary>
+              <div className="capture-details-fields">
+                <label className="capture-field">
+                  <span>Listing URL</span>
+                  <input type="url" value={job.url} onChange={(event) => update('url', event.target.value)} placeholder="https://" />
+                </label>
+                <label className="capture-field">
+                  <span>Source</span>
+                  <select value={job.source} onChange={(event) => update('source', event.target.value as Source)}>
+                    {SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
+                  </select>
+                </label>
+              </div>
+            </details>
+
+            {error && <p className="capture-error" role="alert">{error}</p>}
+
+            <button type="submit" className="capture-primary" disabled={saving || !!duplicate || !job.title.trim()}>
+              {saving ? 'Saving…' : duplicate ? 'Already in tracker' : 'Add to tracker'}
+              {!saving && !duplicate && <span aria-hidden="true">→</span>}
+            </button>
+            <p className="capture-footnote">Stored in this Brave profile.</p>
+          </form>
+        )}
+      </main>
     </div>
   )
 }

@@ -143,7 +143,7 @@ export function CoverLetters() {
                       className={cx(
                         'block w-full rounded px-3 py-2 text-left text-sm',
                         active
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-indigo-600 text-zinc-950'
                           : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800',
                       )}
                     >

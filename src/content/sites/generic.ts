@@ -1,5 +1,27 @@
 import { meta, text, type SiteExtractor } from './types'
 
+function companyFromHost(hostname: string): string {
+  const host = hostname.replace(/^www\./, '').split('.')[0].toLowerCase()
+  const known: Record<string, string> = {
+    lifeattiktok: 'TikTok',
+    tiktok: 'TikTok',
+    linkedin: 'LinkedIn',
+    indeed: 'Indeed',
+    glassdoor: 'Glassdoor',
+  }
+  return known[host] ?? host.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function labeledValue(label: string): string {
+  const marker = [...document.querySelectorAll('p, dt, span, div')].find(
+    (node) => node.textContent?.trim().replace(/\s+/g, ' ') === `${label}:`,
+  )
+  const sibling = marker?.nextElementSibling?.textContent?.trim()
+  if (sibling) return sibling
+  const parentText = marker?.parentElement?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+  return parentText.replace(new RegExp(`^${label}:\\s*`, 'i'), '').trim()
+}
+
 /** Fallback for company career pages: JSON-LD JobPosting, then og tags, then title. */
 export const generic: SiteExtractor = {
   matches: () => true,
@@ -26,12 +48,12 @@ export const generic: SiteExtractor = {
     const ogTitle = meta('og:title') || document.title
     // "Software Intern - Acme" or "Software Intern | Acme" or "Software Intern at Acme"
     const m = ogTitle.match(/^(.*?)\s+(?:-|\||at|@|·)\s+(.*)$/i)
-    const host = location.hostname.replace(/^www\./, '').split('.')[0]
+    const hostCompany = companyFromHost(location.hostname)
     return {
       source: 'company',
       title: (m ? m[1] : ogTitle).trim() || text('h1'),
-      company: (m ? m[2] : meta('og:site_name') || host).trim(),
-      location: '',
+      company: (m ? m[2] : meta('og:site_name') || hostCompany).trim(),
+      location: labeledValue('Location'),
     }
   },
 }

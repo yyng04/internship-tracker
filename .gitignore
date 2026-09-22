@@ -26,4 +26,3 @@ dist-ssr
 # build output
 dist
 .crx
-.claude/
