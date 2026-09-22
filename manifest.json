@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Internship Tracker",
+  "version": "0.1.0",
+  "description": "Track internship applications, cover letters and your resume. Everything stays in your browser.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Internship Tracker"
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["src/content/capture.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage", "alarms", "notifications", "activeTab", "tabs", "unlimitedStorage"],
+  "commands": {
+    "open-dashboard": {
+      "suggested_key": { "default": "Alt+Shift+I" },
+      "description": "Open the Internship Tracker dashboard"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/dashboard/index.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,294 @@
+import { db } from './schema'
+import type {
+  Application,
+  CoverLetter,
+  Profile,
+  Settings,
+  Status,
+  StoredFile,
+  Template,
+} from '../types'
+
+const now = () => new Date().toISOString()
+const today = () => new Date().toISOString().slice(0, 10)
+const uid = () => crypto.randomUUID()
+
+/** Tell the background worker to recompute the badge after any write. */
+function notifyChanged() {
+  try {
+    chrome.runtime?.sendMessage?.({ type: 'DATA_CHANGED' }).catch(() => {})
+  } catch {
+    // not running inside the extension (e.g. plain vite dev page)
+  }
+}
+
+// ---------- applications ----------
+
+export type NewApplication = Omit<
+  Application,
+  'id' | 'history' | 'createdAt' | 'updatedAt' | 'notes' | 'tags'
+> &
+  Partial<Pick<Application, 'notes' | 'tags'>>
+
+export async function addApplication(input: NewApplication): Promise<Application> {
+  const ts = now()
+  const app: Application = {
+    notes: '',
+    tags: [],
+    ...input,
+    id: uid(),
+    history: [{ at: ts, status: input.status }],
+    createdAt: ts,
+    updatedAt: ts,
+  }
+  if (app.status === 'applied' && !app.appliedAt) app.appliedAt = today()
+  await db.applications.add(app)
+  notifyChanged()
+  return app
+}
+
+export async function updateApplication(id: string, patch: Partial<Application>) {
+  await db.applications.update(id, { ...patch, updatedAt: now() })
+  notifyChanged()
+}
+
+export async function setStatus(id: string, status: Status) {
+  const app = await db.applications.get(id)
+  if (!app || app.status === status) return
+  const ts = now()
+  const patch: Partial<Application> = {
+    status,
+    history: [...app.history, { at: ts, status }],
+    updatedAt: ts,
+  }
+  if (status === 'applied' && !app.appliedAt) patch.appliedAt = today()
+  await db.applications.update(id, patch)
+  notifyChanged()
+}
+
+export async function deleteApplication(id: string) {
+  await db.transaction('rw', db.applications, db.coverLetters, async () => {
+    await db.coverLetters.where('applicationId').equals(id).modify({ applicationId: undefined })
+    await db.applications.delete(id)
+  })
+  notifyChanged()
+}
+
+/** Applications with a deadline or follow-up on or before today, not yet closed. */
+export async function listDue(): Promise<Application[]> {
+  const t = today()
+  const all = await db.applications.toArray()
+  return all.filter(
+    (a) =>
+      !['offer', 'rejected', 'withdrawn'].includes(a.status) &&
+      ((a.followUpAt && a.followUpAt <= t) || (a.deadline && a.deadline <= t)),
+  )
+}
+
+// ---------- cover letters ----------
+
+export async function addCoverLetter(
+  input: Pick<CoverLetter, 'title' | 'body'> & Partial<Pick<CoverLetter, 'applicationId' | 'templateId'>>,
+): Promise<CoverLetter> {
+  const ts = now()
+  const cl: CoverLetter = { ...input, id: uid(), createdAt: ts, updatedAt: ts }
+  await db.coverLetters.add(cl)
+  if (cl.applicationId) await db.applications.update(cl.applicationId, { coverLetterId: cl.id })
+  return cl
+}
+
+export async function updateCoverLetter(id: string, patch: Partial<CoverLetter>) {
+  await db.coverLetters.update(id, { ...patch, updatedAt: now() })
+}
+
+export async function deleteCoverLetter(id: string) {
+  await db.transaction('rw', db.applications, db.coverLetters, async () => {
+    await db.applications.where('coverLetterId').equals(id).modify({ coverLetterId: undefined })
+    await db.coverLetters.delete(id)
+  })
+}
+
+// ---------- templates ----------
+
+export async function addTemplate(input: Pick<Template, 'name' | 'body'>): Promise<Template> {
+  const ts = now()
+  const t: Template = { ...input, id: uid(), createdAt: ts, updatedAt: ts }
+  await db.templates.add(t)
+  return t
+}
+
+export async function updateTemplate(id: string, patch: Partial<Template>) {
+  await db.templates.update(id, { ...patch, updatedAt: now() })
+}
+
+export async function deleteTemplate(id: string) {
+  await db.templates.delete(id)
+}
+
+/** Replace {company}, {role}, {date}, {name} and any profile field in a template body. */
+export function renderTemplate(
+  body: string,
+  vars: Record<string, string | undefined>,
+): string {
+  return body.replace(/\{(\w+)\}/g, (m, key: string) => vars[key] ?? m)
+}
+
+// ---------- profile ----------
+
+export const EMPTY_PROFILE: Profile = {
+  id: 'me',
+  fullName: '',
+  email: '',
+  phone: '',
+  linkedin: '',
+  github: '',
+  portfolio: '',
+  school: '',
+  gradYear: '',
+  bullets: [],
+}
+
+export async function getProfile(): Promise<Profile> {
+  return (await db.profile.get('me')) ?? EMPTY_PROFILE
+}
+
+export async function saveProfile(p: Profile) {
+  await db.profile.put({ ...p, id: 'me' })
+}
+
+// ---------- files ----------
+
+export async function storeFile(file: File, kind: StoredFile['kind']): Promise<StoredFile> {
+  const rec: StoredFile = {
+    id: uid(),
+    name: file.name,
+    mime: file.type || 'application/octet-stream',
+    size: file.size,
+    blob: file,
+    kind,
+    uploadedAt: now(),
+  }
+  await db.files.add(rec)
+  return rec
+}
+
+export async function deleteFile(id: string) {
+  await db.transaction('rw', db.applications, db.files, async () => {
+    await db.applications.where('resumeFileId').equals(id).modify({ resumeFileId: undefined })
+    await db.files.delete(id)
+  })
+}
+
+// ---------- settings ----------
+
+export const DEFAULT_SETTINGS: Settings = {
+  id: 'settings',
+  reminderHour: 9,
+  notificationsEnabled: true,
+}
+
+export async function getSettings(): Promise<Settings> {
+  return (await db.settings.get('settings')) ?? DEFAULT_SETTINGS
+}
+
+export async function saveSettings(s: Partial<Settings>) {
+  const cur = await getSettings()
+  await db.settings.put({ ...cur, ...s, id: 'settings' })
+  notifyChanged()
+}
+
+// ---------- backup ----------
+
+interface Backup {
+  version: 1
+  exportedAt: string
+  applications: Application[]
+  coverLetters: CoverLetter[]
+  templates: Template[]
+  profile: Profile | null
+  settings: Settings
+  files: (Omit<StoredFile, 'blob'> & { data: string })[] // base64
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer()
+  let s = ''
+  const bytes = new Uint8Array(buf)
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  }
+  return btoa(s)
+}
+
+function base64ToBlob(b64: string, mime: string): Blob {
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
+}
+
+export async function exportBackup(): Promise<Backup> {
+  const files = await db.files.toArray()
+  return {
+    version: 1,
+    exportedAt: now(),
+    applications: await db.applications.toArray(),
+    coverLetters: await db.coverLetters.toArray(),
+    templates: await db.templates.toArray(),
+    profile: (await db.profile.get('me')) ?? null,
+    settings: await getSettings(),
+    files: await Promise.all(
+      files.map(async ({ blob, ...rest }) => ({ ...rest, data: await blobToBase64(blob) })),
+    ),
+  }
+}
+
+export async function importBackup(raw: unknown, mode: 'replace' | 'merge') {
+  const b = raw as Backup
+  if (!b || b.version !== 1 || !Array.isArray(b.applications)) {
+    throw new Error('Not a valid Internship Tracker backup file')
+  }
+  await db.transaction(
+    'rw',
+    [db.applications, db.coverLetters, db.templates, db.profile, db.files, db.settings],
+    async () => {
+      if (mode === 'replace') {
+        await Promise.all([
+          db.applications.clear(),
+          db.coverLetters.clear(),
+          db.templates.clear(),
+          db.profile.clear(),
+          db.files.clear(),
+          db.settings.clear(),
+        ])
+      }
+      await db.applications.bulkPut(b.applications)
+      await db.coverLetters.bulkPut(b.coverLetters ?? [])
+      await db.templates.bulkPut(b.templates ?? [])
+      if (b.profile) await db.profile.put(b.profile)
+      if (b.settings) await db.settings.put(b.settings)
+      await db.files.bulkPut(
+        (b.files ?? []).map(({ data, ...rest }) => ({ ...rest, blob: base64ToBlob(data, rest.mime) })),
+      )
+    },
+  )
+  notifyChanged()
+}
+
+export async function wipeAll() {
+  await db.delete()
+  await db.open()
+  notifyChanged()
+}
+
+export function applicationsToCsv(apps: Application[]): string {
+  const cols: (keyof Application)[] = [
+    'company', 'role', 'location', 'status', 'source', 'appliedAt', 'deadline',
+    'followUpAt', 'salary', 'url', 'tags', 'notes', 'createdAt', 'updatedAt',
+  ]
+  const esc = (v: unknown) => {
+    const s = Array.isArray(v) ? v.join('; ') : String(v ?? '')
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  return [cols.join(','), ...apps.map((a) => cols.map((c) => esc(a[c])).join(','))].join('\n')
+}
