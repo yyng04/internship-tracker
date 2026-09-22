@@ -130,7 +130,8 @@ export function renderTemplate(
   body: string,
   vars: Record<string, string | undefined>,
 ): string {
-  return body.replace(/\{(\w+)\}/g, (m, key: string) => vars[key] ?? m)
+  // Empty values keep the placeholder visible so the user notices what is missing.
+  return body.replace(/\{(\w+)\}/g, (m, key: string) => vars[key] || m)
 }
 
 // ---------- profile ----------

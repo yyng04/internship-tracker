@@ -27,7 +27,7 @@ export function App() {
       <aside className="w-52 shrink-0 border-r border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-6">
           <div className="text-sm font-semibold">Internship Tracker</div>
-          <div className="text-xs text-zinc-500">{total} applications</div>
+          <div className="text-xs text-zinc-500">{total} application{total === 1 ? "" : "s"}</div>
         </div>
         <nav className="space-y-1">
           {NAV.map((n) => (
