@@ -38,7 +38,7 @@ export function App() {
                 cx(
                   'block rounded px-3 py-1.5 text-sm',
                   isActive
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-indigo-600 text-zinc-950'
                     : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800',
                 )
               }

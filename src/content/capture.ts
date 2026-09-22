@@ -2,9 +2,10 @@ import { generic } from './sites/generic'
 import { glassdoor } from './sites/glassdoor'
 import { indeed } from './sites/indeed'
 import { linkedin } from './sites/linkedin'
+import { tiktok } from './sites/tiktok'
 import type { CapturedJob, Message } from '../types'
 
-const extractors = [linkedin, indeed, glassdoor, generic]
+const extractors = [linkedin, indeed, glassdoor, tiktok, generic]
 
 function capture(): CapturedJob {
   const url = new URL(location.href)

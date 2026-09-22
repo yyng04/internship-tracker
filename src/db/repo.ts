@@ -1,4 +1,5 @@
 import { db } from './schema'
+import { todayISO } from '../lib/utils'
 import type {
   Application,
   CoverLetter,
@@ -10,7 +11,6 @@ import type {
 } from '../types'
 
 const now = () => new Date().toISOString()
-const today = () => new Date().toISOString().slice(0, 10)
 const uid = () => crypto.randomUUID()
 
 /** Tell the background worker to recompute the badge after any write. */
@@ -41,7 +41,7 @@ export async function addApplication(input: NewApplication): Promise<Application
     createdAt: ts,
     updatedAt: ts,
   }
-  if (app.status === 'applied' && !app.appliedAt) app.appliedAt = today()
+  if (app.status === 'applied' && !app.appliedAt) app.appliedAt = todayISO()
   await db.applications.add(app)
   notifyChanged()
   return app
@@ -61,7 +61,7 @@ export async function setStatus(id: string, status: Status) {
     history: [...app.history, { at: ts, status }],
     updatedAt: ts,
   }
-  if (status === 'applied' && !app.appliedAt) patch.appliedAt = today()
+  if (status === 'applied' && !app.appliedAt) patch.appliedAt = todayISO()
   await db.applications.update(id, patch)
   notifyChanged()
 }
@@ -76,7 +76,7 @@ export async function deleteApplication(id: string) {
 
 /** Applications with a deadline or follow-up on or before today, not yet closed. */
 export async function listDue(): Promise<Application[]> {
-  const t = today()
+  const t = todayISO()
   const all = await db.applications.toArray()
   return all.filter(
     (a) =>
