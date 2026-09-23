@@ -261,7 +261,13 @@ export async function importBackup(raw: unknown, mode: 'replace' | 'merge') {
           db.files.clear(),
         ])
       }
-      await db.applications.bulkPut(b.applications)
+      // Older backups may carry the "Unspecified company" sentinel a blank
+      // company used to be stored as.
+      await db.applications.bulkPut(
+        b.applications.map((a) =>
+          a.company === 'Unspecified company' ? { ...a, company: '' } : a,
+        ),
+      )
       await db.coverLetters.bulkPut(b.coverLetters ?? [])
       await db.templates.bulkPut(b.templates ?? [])
       if (b.profile) await db.profile.put(b.profile)
