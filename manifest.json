@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv8euATWntM0jpeukrFMU0Cy+6QHrEX0Y6h47K2h1hDGDSW3H7DbLlZrETsXaU65FrigGlhuY4s98DiO6WzhFFqgmCK+/6bMm+wIoLMrYMxx9eT37l5hZ8DtKYzYC3VmD1J+6Tvwd7mE0j2a2ruPg0Zemx0O8BffhxPsFT/ELqKdEfm3JlV5GYps4nq2NKhULhZShqeRGTKsnvMeKywEhED2j4FZWpjd4gj4k67u+y82JHhBNU+sr65YFmMYau2tWMPdVJE3uSkQagaCpZBcrGi/PF0704VXE0JooLy5s7qm9cMbUhhgDb33JRfXwNKXonlfD7FYaiXeX4GQH4K5zUQIDAQAB",
   "name": "Internship Tracker",
   "version": "0.1.0",
   "description": "Track internship applications, cover letters and your resume. Everything stays in your browser.",
