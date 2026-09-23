@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/schema'
-import { addApplication, listDue } from '../db/repo'
+import { addApplication } from '../db/repo'
 import { openDashboard, todayISO } from '../lib/utils'
 import { SOURCES, STATUSES, STATUS_LABELS, type CapturedJob, type Source, type Status } from '../types'
 
@@ -31,19 +31,16 @@ export function Popup() {
   const [phase, setPhase] = useState<Phase>('loading')
   const [job, setJob] = useState<CapturedJob>(EMPTY_JOB)
   const [status, setStatus] = useState<Status>('wishlist')
-  const [dueCount, setDueCount] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [savedId, setSavedId] = useState('')
 
-  const total = useLiveQuery(() => db.applications.count(), [], 0)
   const duplicate = useLiveQuery(
     () => (job.url ? db.applications.where('url').equals(job.url).first() : undefined),
     [job.url],
   )
 
   useEffect(() => {
-    void listDue().then((due) => setDueCount(due.length))
     ;(async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       if (!tab?.id || !tab.url || !/^https?:/.test(tab.url)) {
@@ -92,19 +89,7 @@ export function Popup() {
 
   return (
     <div className="capture-popup">
-      <header className="capture-header">
-        <div className="capture-brand"><span className="capture-mark" aria-hidden="true" />Internship Tracker</div>
-        <button type="button" className="capture-header-link" onClick={() => openDashboard()}>
-          Dashboard <span aria-hidden="true">↗</span>
-        </button>
-      </header>
-
       <main className="capture-main">
-        <div className="capture-context">
-          <span>{phase === 'form' ? 'REVIEW CAPTURE' : 'YOUR TRACKER'}</span>
-          <span>{total} saved{dueCount > 0 ? ' · ' + dueCount + ' due' : ''}</span>
-        </div>
-
         {phase === 'loading' && <p className="capture-message">Reading this page…</p>}
 
         {phase === 'unsupported' && (
@@ -131,16 +116,18 @@ export function Popup() {
         {phase === 'form' && (
           <form onSubmit={save}>
             <div className="capture-heading">
-              <h1>Save this role</h1>
-              <p>Check the details before adding it to your tracker.</p>
+              <div className="capture-heading-row">
+                <span className="capture-mark" aria-hidden="true" />
+                <h1>Save this role</h1>
+                <button type="button" className="capture-header-link" onClick={() => openDashboard()}>
+                  Dashboard <span aria-hidden="true">↗</span>
+                </button>
+              </div>
             </div>
 
             {duplicate && (
               <div className="capture-duplicate" role="status">
-                <div>
-                  <strong>Already tracked</strong>
-                  <span>{duplicate.company} · {STATUS_LABELS[duplicate.status]}</span>
-                </div>
+                <span><strong>Already in {STATUS_LABELS[duplicate.status]}</strong></span>
                 <button type="button" onClick={() => openDashboard('/app/' + duplicate.id)}>View ↗</button>
               </div>
             )}
@@ -158,16 +145,10 @@ export function Popup() {
                 />
               </label>
 
-              <div className="capture-field-pair">
-                <label className="capture-field">
-                  <span>Company <em>(optional)</em></span>
-                  <input value={job.company} onChange={(event) => update('company', event.target.value)} placeholder="Company (optional)" />
-                </label>
-                <label className="capture-field">
-                  <span>Location <em>(optional)</em></span>
-                  <input value={job.location} onChange={(event) => update('location', event.target.value)} placeholder="Add location" />
-                </label>
-              </div>
+              <label className="capture-field">
+                <span>Company <em>(optional)</em></span>
+                <input value={job.company} onChange={(event) => update('company', event.target.value)} placeholder="Company" />
+              </label>
 
               <label className="capture-field">
                 <span>Stage</span>
@@ -180,6 +161,10 @@ export function Popup() {
             <details className="capture-details">
               <summary>Listing link &amp; source <span>{siteName(job.url)}</span></summary>
               <div className="capture-details-fields">
+                <label className="capture-field">
+                  <span>Location <em>(optional)</em></span>
+                  <input value={job.location} onChange={(event) => update('location', event.target.value)} placeholder="Add location" />
+                </label>
                 <label className="capture-field">
                   <span>Listing URL</span>
                   <input type="url" value={job.url} onChange={(event) => update('url', event.target.value)} placeholder="https://" />
@@ -195,10 +180,12 @@ export function Popup() {
 
             {error && <p className="capture-error" role="alert">{error}</p>}
 
-            <button type="submit" className="capture-primary" disabled={saving || !!duplicate || !job.title.trim()}>
-              {saving ? 'Saving…' : duplicate ? 'Already in tracker' : 'Add to tracker'}
-              {!saving && !duplicate && <span aria-hidden="true">→</span>}
-            </button>
+            {!duplicate && (
+              <button type="submit" className="capture-primary" disabled={saving || !job.title.trim()}>
+                {saving ? 'Saving…' : 'Add to tracker'}
+                {!saving && <span aria-hidden="true">→</span>}
+              </button>
+            )}
             <p className="capture-footnote">Stored in this browser profile.</p>
           </form>
         )}
