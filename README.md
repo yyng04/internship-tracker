@@ -8,7 +8,7 @@ A Chrome and Brave extension for tracking internship applications, cover letters
 - One-click capture from LinkedIn, Indeed, Glassdoor and most company career pages
 - Cover letter templates with `{company}`, `{role}`, `{date}` and `{name}` placeholders
 - Profile page with resume upload, preview and reusable resume bullets
-- Follow-up and deadline reminders: toolbar badge count and a daily notification
+- Deadline and follow-up dates, with due and overdue items highlighted on the board
 - Stats: applications per week, status funnel, response rate
 - Full JSON backup and restore, CSV export
 

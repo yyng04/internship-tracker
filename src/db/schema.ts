@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Application, CoverLetter, Profile, Settings, StoredFile, Template } from '../types'
+import type { Application, CoverLetter, Profile, StoredFile, Template } from '../types'
 
 export class TrackerDB extends Dexie {
   applications!: EntityTable<Application, 'id'>
@@ -7,7 +7,6 @@ export class TrackerDB extends Dexie {
   templates!: EntityTable<Template, 'id'>
   profile!: EntityTable<Profile, 'id'>
   files!: EntityTable<StoredFile, 'id'>
-  settings!: EntityTable<Settings, 'id'>
 
   constructor() {
     super('internship-tracker')
@@ -20,6 +19,20 @@ export class TrackerDB extends Dexie {
       files: 'id, kind, uploadedAt',
       settings: 'id',
     })
+
+    // Version 2 drops the settings store, which only held reminder options, and
+    // clears the old "Unspecified company" sentinel now that a blank company is
+    // stored empty and rendered through companyLabel.
+    this.version(2)
+      .stores({ settings: null })
+      .upgrade((tx) =>
+        tx
+          .table('applications')
+          .toCollection()
+          .modify((app: Application) => {
+            if (app.company === 'Unspecified company') app.company = ''
+          }),
+      )
   }
 }
 

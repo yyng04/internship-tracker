@@ -11,7 +11,7 @@ import {
   updateCoverLetter,
 } from '../../db/repo'
 import { markdownToPlain } from '../../lib/markdown'
-import { copyText, cx, download, fmtDate, todayISO } from '../../lib/utils'
+import { companyLabel, copyText, cx, download, fmtDate, todayISO } from '../../lib/utils'
 import type { Application, CoverLetter, Template } from '../../types'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import {
@@ -26,7 +26,7 @@ import {
   confirmDialog,
 } from '../components/ui'
 
-const appLabel = (a: Application) => `${a.company}: ${a.role}`
+const appLabel = (a: Application) => `${companyLabel(a.company)}: ${a.role}`
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cover-letter'
@@ -76,7 +76,7 @@ export function CoverLetters() {
   useEffect(() => {
     if (titleTouched) return
     const app = appById.get(formAppId)
-    setFormTitle(app ? `${app.company} cover letter` : 'Untitled')
+    setFormTitle(app ? `${companyLabel(app.company)} cover letter` : 'Untitled')
   }, [formAppId, apps])
 
   const create = async () => {
@@ -345,7 +345,7 @@ function LetterEditor({
           Delete
         </Button>
         <span className="ml-auto text-xs text-zinc-500">
-          {saveState === 'saved' ? `Saved ${fmtDate(letter.updatedAt)}` : saveState === 'error' ? 'Change failed — try again' : 'Saving...'}
+          {saveState === 'saved' ? `Saved ${fmtDate(letter.updatedAt)}` : saveState === 'error' ? 'Change failed, try again' : 'Saving...'}
         </span>
       </div>
     </div>

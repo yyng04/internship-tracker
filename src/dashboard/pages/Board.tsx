@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/schema'
 import { addApplication, setStatus } from '../../db/repo'
 import { STATUSES, STATUS_LABELS, type Application, type Status } from '../../types'
-import { cx, fmtDate, todayISO } from '../../lib/utils'
+import { companyLabel, cx, fmtDate, todayISO } from '../../lib/utils'
 import { Button, EmptyState, Input, Modal, PageHeader, StatusBadge } from '../components/ui'
 import { ApplicationCard } from '../components/ApplicationCard'
 import { ApplicationForm, type ApplicationFormValues } from '../components/ApplicationForm'
@@ -33,7 +33,7 @@ function saveView(v: View) {
 const CLOSED: readonly string[] = ['offer', 'rejected', 'withdrawn']
 const isOpen = (a: Application) => !CLOSED.includes(a.status)
 
-/** Same rule as listDue() in repo.ts. */
+/** Open applications whose follow-up or deadline has arrived. */
 function isDue(a: Application, today: string): boolean {
   return isOpen(a) && ((!!a.followUpAt && a.followUpAt <= today) || (!!a.deadline && a.deadline <= today))
 }
@@ -317,7 +317,7 @@ function Table({ apps, today }: { apps: Application[]; today: string }) {
             >
               <td className="px-3 py-2 font-medium">
                 <Link to={`/app/${a.id}`} onClick={(e) => e.stopPropagation()} className="rounded underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-                  {a.company}
+                  {companyLabel(a.company)}
                 </Link>
               </td>
               <td className="px-3 py-2">{a.role}</td>

@@ -1,20 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { db } from '../../db/schema'
 import {
-  DEFAULT_SETTINGS,
   applicationsToCsv,
   exportBackup,
-  getSettings,
   importBackup,
   isBackup,
-  saveSettings,
   wipeAll,
 } from '../../db/repo'
 import { download, todayISO } from '../../lib/utils'
-import type { Settings as SettingsRow } from '../../types'
-import { Button, Card, Field, Input, Modal, PageHeader, Select, confirmDialog } from '../components/ui'
-
-const HOURS = Array.from({ length: 24 }, (_, h) => h)
+import { Button, Card, Input, Modal, PageHeader, confirmDialog } from '../components/ui'
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null
 
@@ -45,76 +39,6 @@ function backupCounts(raw: unknown) {
     templates: len('templates'),
     files: len('files'),
   }
-}
-
-// ---------- Reminders ----------
-
-function RemindersCard() {
-  const [s, setS] = useState<SettingsRow>(DEFAULT_SETTINGS)
-  const [notice, setNotice] = useState<Notice>(null)
-
-  useEffect(() => {
-    getSettings().then(setS)
-  }, [])
-
-  async function patch(p: Partial<SettingsRow>) {
-    const next = { ...s, ...p }
-    setS(next)
-    await saveSettings(p)
-  }
-
-  async function testNotification() {
-    setNotice(null)
-    try {
-      await chrome.runtime.sendMessage({ type: 'DATA_CHANGED' })
-      await chrome.notifications.create({
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: 'Internship Tracker',
-        message: 'Test notification. Reminders will look like this.',
-      })
-      setNotice({ kind: 'ok', text: 'Notification sent.' })
-    } catch (e) {
-      setNotice({
-        kind: 'error',
-        text: `Could not show a notification: ${errMsg(e)}. This only works when the dashboard is opened from the extension.`,
-      })
-    }
-  }
-
-  return (
-    <Card>
-      <SectionTitle>Reminders</SectionTitle>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Daily check time">
-          <Select value={s.reminderHour} onChange={(e) => patch({ reminderHour: Number(e.target.value) })}>
-            {HOURS.map((h) => (
-              <option key={h} value={h}>
-                {h}:00
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <label className="flex items-center gap-2 self-end pb-1.5 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-indigo-600"
-            checked={s.notificationsEnabled}
-            onChange={(e) => patch({ notificationsEnabled: e.target.checked })}
-          />
-          Show notifications
-        </label>
-      </div>
-      <p className="mt-3 text-sm text-zinc-500">
-        Once a day at this time the extension checks for follow-ups and deadlines that are due, updates the toolbar
-        badge, and shows one notification.
-      </p>
-      <div className="mt-3">
-        <Button onClick={testNotification}>Test notification</Button>
-      </div>
-      <NoticeLine notice={notice} />
-    </Card>
-  )
 }
 
 // ---------- Backup ----------
@@ -347,7 +271,6 @@ export function Settings() {
     <>
       <PageHeader title="Settings" />
       <div className="max-w-2xl space-y-4">
-        <RemindersCard />
         <BackupCard />
         <DangerCard />
         <AboutCard />

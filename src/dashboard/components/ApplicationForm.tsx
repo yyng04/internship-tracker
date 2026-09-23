@@ -35,7 +35,7 @@ type Draft = Omit<ApplicationFormValues, 'tags' | 'appliedAt' | 'deadline' | 'fo
 
 function toDraft(initial?: Partial<Application>): Draft {
   return {
-    company: initial?.company === 'Unspecified company' ? '' : initial?.company ?? '',
+    company: initial?.company ?? '',
     role: initial?.role ?? '',
     location: initial?.location ?? '',
     url: initial?.url ?? '',
@@ -77,7 +77,7 @@ export function ApplicationForm({
     setError('')
     try {
       await onSubmit({
-        company: d.company.trim() || 'Unspecified company',
+        company: d.company.trim(),
         role: d.role.trim(),
         location: d.location.trim(),
         url: d.url.trim(),

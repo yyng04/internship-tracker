@@ -40,3 +40,8 @@ export function openDashboard(hash = '') {
 export function cx(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(' ')
 }
+
+/** Company is optional on a saved application; show a neutral placeholder instead of a blank. */
+export function companyLabel(company: string): string {
+  return company.trim() || 'No company'
+}
