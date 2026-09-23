@@ -4,7 +4,6 @@ import type {
   Application,
   CoverLetter,
   Profile,
-  Settings,
   Status,
   StoredFile,
   Template,
@@ -12,15 +11,6 @@ import type {
 
 const now = () => new Date().toISOString()
 const uid = () => crypto.randomUUID()
-
-/** Tell the background worker to recompute the badge after any write. */
-function notifyChanged() {
-  try {
-    chrome.runtime?.sendMessage?.({ type: 'DATA_CHANGED' }).catch(() => {})
-  } catch {
-    // not running inside the extension (e.g. plain vite dev page)
-  }
-}
 
 // ---------- applications ----------
 
@@ -43,13 +33,11 @@ export async function addApplication(input: NewApplication): Promise<Application
   }
   if (app.status === 'applied' && !app.appliedAt) app.appliedAt = todayISO()
   await db.applications.add(app)
-  notifyChanged()
   return app
 }
 
 export async function updateApplication(id: string, patch: Partial<Application>) {
   await db.applications.update(id, { ...patch, updatedAt: now() })
-  notifyChanged()
 }
 
 export async function setStatus(id: string, status: Status) {
@@ -63,7 +51,6 @@ export async function setStatus(id: string, status: Status) {
   }
   if (status === 'applied' && !app.appliedAt) patch.appliedAt = todayISO()
   await db.applications.update(id, patch)
-  notifyChanged()
 }
 
 export async function deleteApplication(id: string) {
@@ -71,18 +58,6 @@ export async function deleteApplication(id: string) {
     await db.coverLetters.where('applicationId').equals(id).modify({ applicationId: undefined })
     await db.applications.delete(id)
   })
-  notifyChanged()
-}
-
-/** Applications with a deadline or follow-up on or before today, not yet closed. */
-export async function listDue(): Promise<Application[]> {
-  const t = todayISO()
-  const all = await db.applications.toArray()
-  return all.filter(
-    (a) =>
-      !['offer', 'rejected', 'withdrawn'].includes(a.status) &&
-      ((a.followUpAt && a.followUpAt <= t) || (a.deadline && a.deadline <= t)),
-  )
 }
 
 // ---------- cover letters ----------
@@ -119,7 +94,6 @@ export async function assignCoverLetter(letterId: string, applicationId?: string
     }
     await db.coverLetters.update(letterId, { applicationId, updatedAt: ts })
   })
-  notifyChanged()
 }
 
 export async function unlinkApplicationCoverLetter(applicationId: string) {
@@ -129,8 +103,7 @@ export async function unlinkApplicationCoverLetter(applicationId: string) {
   if (letter) await assignCoverLetter(letter.id)
   else {
     await db.applications.update(applicationId, { coverLetterId: undefined, updatedAt: now() })
-    notifyChanged()
-  }
+    }
 }
 
 export async function updateCoverLetter(id: string, patch: Partial<CoverLetter>) {
@@ -216,24 +189,6 @@ export async function deleteFile(id: string) {
   })
 }
 
-// ---------- settings ----------
-
-export const DEFAULT_SETTINGS: Settings = {
-  id: 'settings',
-  reminderHour: 9,
-  notificationsEnabled: true,
-}
-
-export async function getSettings(): Promise<Settings> {
-  return (await db.settings.get('settings')) ?? DEFAULT_SETTINGS
-}
-
-export async function saveSettings(s: Partial<Settings>) {
-  const cur = await getSettings()
-  await db.settings.put({ ...cur, ...s, id: 'settings' })
-  notifyChanged()
-}
-
 // ---------- backup ----------
 
 interface Backup {
@@ -243,7 +198,6 @@ interface Backup {
   coverLetters: CoverLetter[]
   templates: Template[]
   profile: Profile | null
-  settings: Settings
   files: (Omit<StoredFile, 'blob'> & { data: string })[] // base64
 }
 
@@ -273,7 +227,6 @@ export async function exportBackup(): Promise<Backup> {
     coverLetters: await db.coverLetters.toArray(),
     templates: await db.templates.toArray(),
     profile: (await db.profile.get('me')) ?? null,
-    settings: await getSettings(),
     files: await Promise.all(
       files.map(async ({ blob, ...rest }) => ({ ...rest, data: await blobToBase64(blob) })),
     ),
@@ -286,7 +239,6 @@ export function isBackup(raw: unknown): raw is Backup {
     b && b.version === 1 &&
     Array.isArray(b.applications) && Array.isArray(b.coverLetters) &&
     Array.isArray(b.templates) && Array.isArray(b.files) &&
-    b.settings && typeof b.settings === 'object' &&
     (b.profile === null || (b.profile && typeof b.profile === 'object')),
   )
 }
@@ -298,7 +250,7 @@ export async function importBackup(raw: unknown, mode: 'replace' | 'merge') {
   const b = raw
   await db.transaction(
     'rw',
-    [db.applications, db.coverLetters, db.templates, db.profile, db.files, db.settings],
+    [db.applications, db.coverLetters, db.templates, db.profile, db.files],
     async () => {
       if (mode === 'replace') {
         await Promise.all([
@@ -307,26 +259,22 @@ export async function importBackup(raw: unknown, mode: 'replace' | 'merge') {
           db.templates.clear(),
           db.profile.clear(),
           db.files.clear(),
-          db.settings.clear(),
         ])
       }
       await db.applications.bulkPut(b.applications)
       await db.coverLetters.bulkPut(b.coverLetters ?? [])
       await db.templates.bulkPut(b.templates ?? [])
       if (b.profile) await db.profile.put(b.profile)
-      if (b.settings) await db.settings.put(b.settings)
       await db.files.bulkPut(
         (b.files ?? []).map(({ data, ...rest }) => ({ ...rest, blob: base64ToBlob(data, rest.mime) })),
       )
     },
   )
-  notifyChanged()
 }
 
 export async function wipeAll() {
   await db.delete()
   await db.open()
-  notifyChanged()
 }
 
 export function applicationsToCsv(apps: Application[]): string {

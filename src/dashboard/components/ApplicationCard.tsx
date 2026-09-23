@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Application } from '../../types'
-import { fmtDate, todayISO } from '../../lib/utils'
+import { companyLabel, fmtDate, todayISO } from '../../lib/utils'
 
 const CLOSED: readonly string[] = ['offer', 'rejected', 'withdrawn']
 
@@ -22,7 +22,7 @@ export function ApplicationCard({ application }: { application: Application }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-semibold">{application.company}</div>
+          <div className="truncate font-semibold">{companyLabel(application.company)}</div>
           <div className="truncate text-zinc-700 dark:text-zinc-300">{application.role}</div>
           {application.location && (
             <div className="truncate text-xs text-zinc-500">{application.location}</div>

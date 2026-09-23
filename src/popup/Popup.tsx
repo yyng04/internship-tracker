@@ -70,7 +70,7 @@ export function Popup() {
     setError('')
     try {
       const application = await addApplication({
-        company: job.company.trim() || 'Unspecified company',
+        company: job.company.trim(),
         role: job.title.trim(),
         location: job.location.trim(),
         url: job.url.trim(),

@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/schema'
 import { assignCoverLetter, deleteApplication, setStatus, unlinkApplicationCoverLetter, updateApplication } from '../../db/repo'
 import { STATUSES, STATUS_LABELS, type Application, type Status } from '../../types'
-import { copyText, daysBetween, fmtDate, todayISO } from '../../lib/utils'
+import { companyLabel, copyText, daysBetween, fmtDate, todayISO } from '../../lib/utils'
 import {
   Button,
   Card,
@@ -65,7 +65,7 @@ export function ApplicationDetail() {
   }
 
   const onDelete = async () => {
-    if (!confirmDialog(`Delete the application to ${a.company}? This cannot be undone.`)) return
+    if (!confirmDialog(`Delete the application to ${companyLabel(a.company)}? This cannot be undone.`)) return
     await deleteApplication(a.id)
     navigate('/board')
   }
@@ -84,7 +84,7 @@ export function ApplicationDetail() {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold">{a.company}</h1>
+            <h1 className="text-xl font-semibold">{companyLabel(a.company)}</h1>
             <StatusBadge status={a.status} />
           </div>
           <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">
@@ -127,7 +127,7 @@ export function ApplicationDetail() {
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Details</h2>
           <dl className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            <Row label="Company">{a.company}</Row>
+            <Row label="Company">{companyLabel(a.company)}</Row>
             <Row label="Role">{a.role}</Row>
             <Row label="Location">{a.location || dash}</Row>
             <Row label="URL">

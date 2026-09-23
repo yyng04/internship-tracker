@@ -90,12 +90,6 @@ export interface StoredFile {
   uploadedAt: string
 }
 
-export interface Settings {
-  id: 'settings'
-  reminderHour: number // 0 to 23, local time
-  notificationsEnabled: boolean
-}
-
 /** Shape the content script returns when the popup asks it to read a job page. */
 export interface CapturedJob {
   title: string
@@ -108,5 +102,4 @@ export interface CapturedJob {
 /** Messages passed between popup, dashboard, background and content scripts. */
 export type Message =
   | { type: 'CAPTURE_JOB' }
-  | { type: 'DATA_CHANGED' }
   | { type: 'OPEN_DASHBOARD'; hash?: string }

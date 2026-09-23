@@ -1,8 +1,21 @@
+/* The popup is styled by hand and does not load Tailwind, so it carries the
+   small reset it actually needs. */
 html,
 body {
   width: 480px;
   min-width: 480px;
   margin: 0;
+  background: #111214;
+}
+
+/* :where() keeps these at zero specificity so every rule below still wins. */
+:where(.capture-popup, .capture-popup *, .capture-popup *::before, .capture-popup *::after) {
+  box-sizing: border-box;
+}
+
+:where(.capture-popup button) {
+  font: inherit;
+  color: inherit;
 }
 
 .capture-popup {
