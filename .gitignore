@@ -26,3 +26,6 @@ dist-ssr
 # build output
 dist
 .crx
+
+# Private half of the extension key; keep it off GitHub
+extension-key.pem
