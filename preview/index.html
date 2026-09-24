@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Internship Tracker, local preview</title>
+    <style>
+      :root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: dark; }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      body { margin: 0; background: #111214; color: #f3efe5; }
+      button { font: inherit; }
+      .shell { min-height: 100vh; }
+      .main { display: flex; min-width: 0; min-height: 100vh; flex-direction: column; }
+      .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; padding: 0 19px; border-bottom: 1px solid #414246; background: #1b1c1f; }
+      .toolbar-title { font-size: 13px; font-weight: 650; }
+      .toolbar-sub { margin-left: 10px; color: #bfbdb4; font-size: 11px; }
+      .preview-button { padding: 7px 11px; border: 1px solid #414246; border-radius: 7px; background: #292a2d; color: #f3efe5; font-size: 11px; font-weight: 650; cursor: pointer; }
+      .preview-button:hover { background: #414246; }
+      .workspace { position: relative; flex: 1; min-height: 650px; overflow: hidden; background: #111214; }
+      .dashboard { display: block; width: 100%; height: calc(100vh - 56px); min-height: 650px; border: 0; background: #111214; }
+      .popup-shade { position: absolute; inset: 0; background: #050505a8; }
+      .popup-wrap { position: absolute; top: 16px; right: 16px; width: 480px; max-width: calc(100% - 32px); overflow: hidden; border: 1px solid #414246; border-radius: 10px; box-shadow: 0 20px 70px #0008; background: #111214; }
+      .popup-label { display: flex; justify-content: space-between; padding: 8px 11px; border-bottom: 1px solid #414246; color: #bfbdb4; font-size: 10px; }
+      .popup-label button { border: 0; background: transparent; color: #bfbdb4; cursor: pointer; }
+      .popup { display: block; width: 480px; max-width: 100%; height: 590px; border: 0; }
+      .loading { display: grid; place-items: center; min-height: 100vh; color: #bfbdb4; font-size: 13px; }
+      @media (max-width: 720px) {
+        .toolbar-sub { display: none; }
+        .popup-wrap { right: 50%; transform: translateX(50%); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading" class="loading">Preparing sample applications…</div>
+    <div id="shell" class="shell" hidden>
+      <div class="main">
+        <header class="toolbar">
+          <div><span class="toolbar-title">Internship Tracker, local preview</span><span class="toolbar-sub">Sample data only · use the app sidebar to explore every page</span></div>
+          <button id="popup-toggle" class="preview-button" aria-expanded="true">Hide capture popup</button>
+        </header>
+        <div class="workspace">
+          <iframe id="dashboard" class="dashboard" title="Internship Tracker dashboard"></iframe>
+          <div id="popup-shade" class="popup-shade"></div>
+          <div id="popup-wrap" class="popup-wrap">
+            <div class="popup-label"><span>EXTENSION POPUP · SAMPLE JOB PAGE</span><button id="popup-close" aria-label="Close popup">✕</button></div>
+            <iframe id="popup" class="popup" title="Internship Tracker capture popup"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="./preview.js?v=2"></script>
+  </body>
+</html>
