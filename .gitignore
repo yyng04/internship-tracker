@@ -29,3 +29,6 @@ dist
 
 # Private half of the extension key; keep it off GitHub
 extension-key.pem
+
+# Generated copy of dist used by the local preview
+preview/app
