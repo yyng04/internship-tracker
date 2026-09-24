@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* The preview harness has its own stylesheet. Without this, Tailwind scans it
+   for class names and ships unused utilities in the extension's CSS. */
+@source not "../preview";
+
 /* A single palette for the dashboard. The dark variant is fixed so the
    extension looks the same regardless of the browser's system theme. */
 @custom-variant dark (&:where(.dark, .dark *));
