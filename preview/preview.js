@@ -1,5 +1,5 @@
 const stores = {
-  applications: ['company', 'status', 'url', 'appliedAt', 'deadline', 'followUpAt', 'updatedAt', 'coverLetterId', 'resumeFileId', '*tags'],
+  applications: ['company', 'status', 'url', 'appliedAt', 'deadline', 'followUpAt', 'updatedAt', 'coverLetterId', '*tags'],
   coverLetters: ['applicationId', 'templateId', 'updatedAt'],
   templates: ['name', 'updatedAt'],
   profile: [],

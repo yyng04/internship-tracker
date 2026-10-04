@@ -5,11 +5,10 @@ A Chrome and Brave extension for tracking internship applications, cover letters
 ## Features
 
 - Board of applications by status (wishlist, applied, OA, interview, offer, rejected, withdrawn), with a table view
-- One-click capture from LinkedIn, Indeed, Glassdoor and most company career pages
+- One-click capture from LinkedIn, Indeed, Glassdoor, Life at TikTok and most company career pages. The extension reads only the tab you click it on.
 - Cover letter templates with `{company}`, `{role}`, `{date}` and `{name}` placeholders
 - Profile page with resume upload, preview and reusable resume bullets
 - Deadline and follow-up dates, with due and overdue items highlighted on the board
-- Stats: applications per week, status funnel, response rate
 - Full JSON backup and restore, CSV export
 
 ## Install (Chrome or Brave)

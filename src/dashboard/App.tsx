@@ -7,14 +7,12 @@ import { ApplicationDetail } from './pages/ApplicationDetail'
 import { CoverLetters } from './pages/CoverLetters'
 import { Templates } from './pages/Templates'
 import { Profile } from './pages/Profile'
-import { Stats } from './pages/Stats'
 import { Settings } from './pages/Settings'
 
 const NAV = [
   { to: '/board', label: 'Board' },
   { to: '/letters', label: 'Cover letters' },
   { to: '/templates', label: 'Templates' },
-  { to: '/stats', label: 'Stats' },
   { to: '/profile', label: 'Profile' },
   { to: '/settings', label: 'Settings' },
 ]
@@ -56,7 +54,6 @@ export function App() {
           <Route path="/letters" element={<CoverLetters />} />
           <Route path="/letters/:id" element={<CoverLetters />} />
           <Route path="/templates" element={<Templates />} />
-          <Route path="/stats" element={<Stats />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

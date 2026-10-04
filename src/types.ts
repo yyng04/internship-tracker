@@ -42,7 +42,6 @@ export interface Application {
   salary?: string
   notes: string
   coverLetterId?: string
-  resumeFileId?: string
   tags: string[]
   history: StatusChange[]
   createdAt: string
@@ -99,7 +98,6 @@ export interface CapturedJob {
   source: Source
 }
 
-/** Messages passed between popup, dashboard, background and content scripts. */
+/** Message the popup sends to the capture script it injects into the current tab. */
 export type Message =
   | { type: 'CAPTURE_JOB' }
-  | { type: 'OPEN_DASHBOARD'; hash?: string }

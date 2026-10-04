@@ -183,10 +183,7 @@ export async function storeFile(file: File, kind: StoredFile['kind']): Promise<S
 }
 
 export async function deleteFile(id: string) {
-  await db.transaction('rw', db.applications, db.files, async () => {
-    await db.applications.where('resumeFileId').equals(id).modify({ resumeFileId: undefined })
-    await db.files.delete(id)
-  })
+  await db.files.delete(id)
 }
 
 // ---------- backup ----------

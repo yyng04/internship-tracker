@@ -13,12 +13,12 @@ globalThis.chrome = {
     sendMessage: async () => exampleJob,
     create: ({ url }) => parent.postMessage({ type: 'preview-open-dashboard', url }, location.origin),
   },
+  scripting: {
+    executeScript: async () => [],
+  },
   runtime: {
     sendMessage: async () => true,
     getManifest: () => ({ version: '0.1.0 preview' }),
     getURL: (path) => new URL('/app/' + path, location.origin).href,
-  },
-  notifications: {
-    create: async () => { throw new Error('System notifications are unavailable in the local preview') },
   },
 }

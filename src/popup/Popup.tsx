@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/schema'
 import { addApplication } from '../db/repo'
+import captureScript from '../content/capture.ts?script&iife'
 import { openDashboard, todayISO } from '../lib/utils'
 import { SOURCES, STATUSES, STATUS_LABELS, type CapturedJob, type Source, type Status } from '../types'
 
@@ -48,10 +49,12 @@ export function Popup() {
         return
       }
       try {
+        // activeTab grants access to this tab only, and only because the user opened the popup.
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [captureScript] })
         const captured = (await chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_JOB' })) as CapturedJob
         setJob({ ...captured, company: captured.company || companyFromUrl(captured.url) })
       } catch {
-        // The current tab may have been loaded before the extension was installed.
+        // Some pages, such as the Chrome Web Store, refuse script injection.
         setJob({ title: tab.title ?? '', company: companyFromUrl(tab.url), url: tab.url, location: '', source: 'other' })
       }
       setPhase('form')

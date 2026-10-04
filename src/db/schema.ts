@@ -33,6 +33,11 @@ export class TrackerDB extends Dexie {
             if (app.company === 'Unspecified company') app.company = ''
           }),
       )
+
+    // Version 3 drops the index on resumeFileId, a field nothing used.
+    this.version(3).stores({
+      applications: 'id, company, status, url, appliedAt, deadline, followUpAt, updatedAt, coverLetterId, *tags',
+    })
   }
 }
 

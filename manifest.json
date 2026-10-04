@@ -18,22 +18,10 @@
     "service_worker": "src/background/index.ts",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://*/*",
-        "http://*/*"
-      ],
-      "js": [
-        "src/content/capture.ts"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
   "permissions": [
     "storage",
     "activeTab",
-    "tabs",
+    "scripting",
     "unlimitedStorage"
   ],
   "commands": {
@@ -47,11 +35,13 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/dashboard/index.html"
+        "<dynamic_resource>"
       ],
       "matches": [
-        "<all_urls>"
-      ]
+        "http://*/*",
+        "https://*/*"
+      ],
+      "use_dynamic_url": true
     }
   ]
 }

@@ -24,9 +24,13 @@ function capture(): CapturedJob {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg: Message, _sender, sendResponse) => {
-  if (msg?.type === 'CAPTURE_JOB') {
-    sendResponse(capture())
-  }
-  return false
-})
+// The popup injects this script each time it opens, so register the listener once per page.
+const flag = '__internshipTrackerCapture'
+const scope = globalThis as typeof globalThis & { [flag]?: boolean }
+if (!scope[flag]) {
+  scope[flag] = true
+  chrome.runtime.onMessage.addListener((msg: Message, _sender, sendResponse) => {
+    if (msg?.type === 'CAPTURE_JOB') sendResponse(capture())
+    return false
+  })
+}
