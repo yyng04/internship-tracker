@@ -1,4 +1,4 @@
-import { text, type SiteExtractor } from './types'
+import { first, text, type SiteExtractor } from './types'
 
 export const linkedin: SiteExtractor = {
   matches: (u) => u.hostname.endsWith('linkedin.com'),
@@ -19,4 +19,6 @@ export const linkedin: SiteExtractor = {
       text('.jobs-unified-top-card__bullet') ||
       text('.topcard__flavor--bullet'),
   }),
+  descriptionRoot: () =>
+    first('.jobs-description__content', '.jobs-box__html-content', '#job-details', '.show-more-less-html__markup', '.description__text'),
 }

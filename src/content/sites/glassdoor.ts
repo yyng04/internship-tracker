@@ -1,4 +1,4 @@
-import { text, type SiteExtractor } from './types'
+import { first, text, type SiteExtractor } from './types'
 
 export const glassdoor: SiteExtractor = {
   matches: (u) => u.hostname.includes('glassdoor.'),
@@ -8,4 +8,5 @@ export const glassdoor: SiteExtractor = {
     company: text('[data-test="employer-name"]') || text('[data-test="employerName"]'),
     location: text('[data-test="location"]'),
   }),
+  descriptionRoot: () => first('[data-test="jobDescriptionContent"]', '[class*="JobDetails_jobDescription"]', '.jobDescriptionContent'),
 }

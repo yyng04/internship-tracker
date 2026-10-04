@@ -15,6 +15,7 @@ import {
   confirmDialog,
 } from '../components/ui'
 import { ApplicationForm, type ApplicationFormValues } from '../components/ApplicationForm'
+import { ListingDetails } from '../components/ListingDetails'
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -227,6 +228,11 @@ export function ApplicationDetail() {
           </Card>
         </div>
       </div>
+
+      <Card className="mt-4">
+        <h2 className="mb-3 text-sm font-semibold">From the listing</h2>
+        <ListingDetails description={a.description} />
+      </Card>
 
       <Modal open={editing} onClose={() => setEditing(false)} title="Edit application" wide>
         <ApplicationForm initial={a} onSubmit={onEdit} onCancel={() => setEditing(false)} />

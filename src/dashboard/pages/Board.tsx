@@ -40,7 +40,10 @@ function isDue(a: Application, today: string): boolean {
 
 function matches(a: Application, q: string): boolean {
   if (!q) return true
-  const hay = [a.company, a.role, a.location, ...a.tags].join(' ').toLowerCase()
+  // Includes the saved listing text, so searching a skill finds the roles that ask for it.
+  const d = a.description
+  const listing = d ? [d.text, ...d.responsibilities, ...d.requirements, ...d.preferred] : []
+  const hay = [a.company, a.role, a.location, ...a.tags, ...listing].join(' ').toLowerCase()
   return hay.includes(q)
 }
 
@@ -94,7 +97,7 @@ export function Board() {
           <>
             <Input
               type="search"
-              placeholder="Search company, role, location, tags"
+              placeholder="Search roles, companies, skills"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-64"

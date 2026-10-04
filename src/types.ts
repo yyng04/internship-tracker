@@ -28,6 +28,15 @@ export interface StatusChange {
   status: Status
 }
 
+/** Text saved from a listing when it was captured, so it survives the listing being taken down. */
+export interface JobDescription {
+  responsibilities: string[]
+  requirements: string[]
+  preferred: string[]
+  text: string // the whole listing as plain text, bullets marked with "•"
+  capturedAt: string
+}
+
 export interface Application {
   id: string
   company: string
@@ -42,6 +51,7 @@ export interface Application {
   salary?: string
   notes: string
   coverLetterId?: string
+  description?: JobDescription
   tags: string[]
   history: StatusChange[]
   createdAt: string
@@ -96,6 +106,7 @@ export interface CapturedJob {
   url: string
   location: string
   source: Source
+  description?: JobDescription
 }
 
 /** Message the popup sends to the capture script it injects into the current tab. */

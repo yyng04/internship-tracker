@@ -1,12 +1,23 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/schema'
-import { addApplication } from '../db/repo'
+import { addApplication, updateApplication } from '../db/repo'
 import captureScript from '../content/capture.ts?script&iife'
 import { openDashboard, todayISO } from '../lib/utils'
-import { SOURCES, STATUSES, STATUS_LABELS, type CapturedJob, type Source, type Status } from '../types'
+import { SOURCES, STATUSES, STATUS_LABELS, type CapturedJob, type JobDescription, type Source, type Status } from '../types'
 
 type Phase = 'loading' | 'form' | 'saved' | 'unsupported'
+
+/** "5 responsibilities · 6 requirements · 3 preferred", leaving out empty sections. */
+function describeCounts(d: JobDescription): string {
+  const parts = [
+    [d.responsibilities.length, 'responsibilit', 'y', 'ies'],
+    [d.requirements.length, 'requirement', '', 's'],
+    [d.preferred.length, 'preferred', '', ''],
+  ] as const
+  const listed = parts.filter(([n]) => n > 0).map(([n, stem, one, many]) => `${n} ${stem}${n === 1 ? one : many}`)
+  return listed.length ? listed.join(' · ') : 'full text only'
+}
 
 const EMPTY_JOB: CapturedJob = { title: '', company: '', url: '', location: '', source: 'other' }
 
@@ -35,6 +46,7 @@ export function Popup() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [savedId, setSavedId] = useState('')
+  const [attached, setAttached] = useState(false)
 
   const duplicate = useLiveQuery(
     () => (job.url ? db.applications.where('url').equals(job.url).first() : undefined),
@@ -80,6 +92,7 @@ export function Popup() {
         source: job.source,
         status,
         appliedAt: status === 'applied' ? todayISO() : undefined,
+        description: job.description,
       })
       setSavedId(application.id)
       setPhase('saved')
@@ -88,6 +101,12 @@ export function Popup() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function attachDescription() {
+    if (!duplicate || !job.description) return
+    await updateApplication(duplicate.id, { description: job.description })
+    setAttached(true)
   }
 
   return (
@@ -133,6 +152,15 @@ export function Popup() {
                 <span><strong>Already in {STATUS_LABELS[duplicate.status]}</strong></span>
                 <button type="button" onClick={() => openDashboard('/app/' + duplicate.id)}>View ↗</button>
               </div>
+            )}
+            {duplicate && job.description && (attached || !duplicate.description) && (
+              attached ? (
+                <p className="capture-listing">Listing details saved to this role.</p>
+              ) : (
+                <button type="button" className="capture-primary capture-attach" onClick={attachDescription}>
+                  Save listing details to it ({describeCounts(job.description)})
+                </button>
+              )
             )}
 
             <div className="capture-fields">
@@ -180,6 +208,14 @@ export function Popup() {
                 </label>
               </div>
             </details>
+
+            {!duplicate && (
+              <p className="capture-listing">
+                {job.description
+                  ? <>Listing text found: {describeCounts(job.description)}</>
+                  : 'No listing description found on this page.'}
+              </p>
+            )}
 
             {error && <p className="capture-error" role="alert">{error}</p>}
 

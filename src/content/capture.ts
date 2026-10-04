@@ -1,11 +1,32 @@
+import { describe, findDescriptionRoot } from './description'
 import { generic } from './sites/generic'
 import { glassdoor } from './sites/glassdoor'
 import { indeed } from './sites/indeed'
 import { linkedin } from './sites/linkedin'
 import { tiktok } from './sites/tiktok'
-import type { CapturedJob, Message } from '../types'
+import type { SiteExtractor } from './sites/types'
+import type { CapturedJob, JobDescription, Message } from '../types'
 
 const extractors = [linkedin, indeed, glassdoor, tiktok, generic]
+
+/** Try the site's own container, then JSON-LD, then a search by section headings. */
+function readDescription(ex: SiteExtractor): JobDescription | undefined {
+  const finders = [
+    () => ex.descriptionRoot?.() ?? null,
+    () => generic.descriptionRoot?.() ?? null,
+    () => findDescriptionRoot(document),
+  ]
+  for (const find of finders) {
+    try {
+      const root = find()
+      const found = root ? describe(root) : undefined
+      if (found) return found
+    } catch {
+      // a broken finder must not stop the rest of the capture
+    }
+  }
+  return undefined
+}
 
 function capture(): CapturedJob {
   const url = new URL(location.href)
@@ -21,6 +42,7 @@ function capture(): CapturedJob {
     location: partial.location ?? '',
     source: partial.source ?? 'other',
     url: url.toString(),
+    description: readDescription(ex),
   }
 }
 

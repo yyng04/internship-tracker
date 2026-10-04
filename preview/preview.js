@@ -38,6 +38,23 @@ function timestamp(daysAgo = 0) {
   return date.toISOString()
 }
 
+
+const sampleListing = {
+  responsibilities: [
+    'Build dashboards in SQL and Tableau that track rider and merchant metrics',
+    'Investigate changes in weekly conversion and present findings to the product team',
+    'Clean and document datasets used across the analytics team',
+  ],
+  requirements: [
+    'Currently pursuing a degree in Business Analytics, Computer Science, Statistics or a related field',
+    'Working knowledge of SQL and Python',
+    'Clear written and spoken communication',
+  ],
+  preferred: ['Experience with Tableau or Power BI', 'An earlier analytics internship or project'],
+  text: 'Sample listing used by the local preview.',
+  capturedAt: new Date().toISOString(),
+}
+
 function application(id, company, role, location, status, source, daysAgo, options = {}) {
   return {
     id, company, role, location, status, source,
@@ -52,6 +69,7 @@ function application(id, company, role, location, status, source, daysAgo, optio
     followUpAt: options.followUpToday ? localDate() : undefined,
     coverLetterId: options.coverLetterId,
     salary: options.salary,
+    description: options.description,
   }
 }
 
@@ -84,7 +102,7 @@ async function seedPreview() {
       ],
     }),
     application('grab', 'Grab', 'Data Analyst Intern', 'Singapore', 'oa', 'indeed', 17, {
-      appliedAgo: 17, deadlineAhead: 5, tags: ['data', 'analytics'],
+      appliedAgo: 17, deadlineAhead: 5, tags: ['data', 'analytics'], description: sampleListing,
       history: [{ at: timestamp(17), status: 'applied' }, { at: timestamp(6), status: 'oa' }],
     }),
     application('notion', 'Notion', 'UX Research Intern', 'Remote', 'rejected', 'company', 40, {

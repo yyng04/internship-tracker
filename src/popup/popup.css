@@ -183,3 +183,6 @@ body {
   .capture-field textarea,
   .capture-field select { transition: none; }
 }
+
+.capture-listing { margin: -4px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.capture-attach { margin-bottom: 14px; font-size: 12px; }

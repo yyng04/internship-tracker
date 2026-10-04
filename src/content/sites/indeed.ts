@@ -1,4 +1,4 @@
-import { text, type SiteExtractor } from './types'
+import { first, text, type SiteExtractor } from './types'
 
 export const indeed: SiteExtractor = {
   matches: (u) => u.hostname.includes('indeed.'),
@@ -8,4 +8,5 @@ export const indeed: SiteExtractor = {
     company: text('[data-testid="inlineHeader-companyName"]') || text('[data-company-name="true"]') || text('.jobsearch-InlineCompanyRating-companyHeader'),
     location: text('[data-testid="inlineHeader-companyLocation"]') || text('[data-testid="jobsearch-JobInfoHeader-companyLocation"]'),
   }),
+  descriptionRoot: () => first('#jobDescriptionText'),
 }
