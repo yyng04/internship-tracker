@@ -148,6 +148,7 @@ export function renderTemplate(
 export const EMPTY_PROFILE: Profile = {
   id: 'me',
   fullName: '',
+  headline: '',
   email: '',
   phone: '',
   linkedin: '',
@@ -159,7 +160,8 @@ export const EMPTY_PROFILE: Profile = {
 }
 
 export async function getProfile(): Promise<Profile> {
-  return (await db.profile.get('me')) ?? EMPTY_PROFILE
+  // Spread over the defaults so profiles saved before a field existed still have it.
+  return { ...EMPTY_PROFILE, ...(await db.profile.get('me')) }
 }
 
 export async function saveProfile(p: Profile) {

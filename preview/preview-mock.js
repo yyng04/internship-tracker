@@ -29,3 +29,8 @@ globalThis.chrome = {
     getURL: (path) => new URL('/app/' + path, location.origin).href,
   },
 }
+
+// The preview records print requests instead of opening the browser's print dialog.
+window.print = () => {
+  window.__printCalls = (window.__printCalls || 0) + 1
+}

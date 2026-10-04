@@ -8,6 +8,7 @@ import { CoverLetters } from './pages/CoverLetters'
 import { Templates } from './pages/Templates'
 import { Profile } from './pages/Profile'
 import { Settings } from './pages/Settings'
+import { LetterPrint } from './letter/LetterPrint'
 
 const NAV = [
   { to: '/board', label: 'Board' },
@@ -18,6 +19,16 @@ const NAV = [
 ]
 
 export function App() {
+  return (
+    <Routes>
+      {/* The print page is a bare A4 sheet, so it sits outside the sidebar layout. */}
+      <Route path="/letters/:id/print" element={<LetterPrint />} />
+      <Route path="*" element={<Shell />} />
+    </Routes>
+  )
+}
+
+function Shell() {
   const total = useLiveQuery(() => db.applications.count(), [], 0)
 
   return (

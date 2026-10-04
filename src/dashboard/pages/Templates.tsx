@@ -15,9 +15,9 @@ import { MarkdownEditor, PREVIEW_CLS } from '../components/MarkdownEditor'
 import { Button, Card, EmptyState, Field, Input, PageHeader, confirmDialog } from '../components/ui'
 
 const STARTER_NAME = 'Starter'
-const STARTER_BODY = `{date}
-
-Dear Hiring Team at {company},
+// The letter page adds your name, contact details, the date and the recipient, so
+// the template starts at the greeting.
+const STARTER_BODY = `Dear Hiring Team,
 
 I am writing to apply for the {role} position at {company}. I am a student at {school} and I am looking for an internship where I can apply what I have learned as part of a working team.
 
@@ -27,8 +27,8 @@ I am interested in {company} because of the work your team does and the chance t
 
 Thank you for your time and consideration.
 
-{name}
-{email}`
+Kind regards,
+{name}`
 
 export function Templates() {
   const templates = useLiveQuery(() => db.templates.orderBy('updatedAt').reverse().toArray(), [], [] as Template[])
@@ -137,7 +137,7 @@ export function Templates() {
     <div>
       <PageHeader
         title="Templates"
-        subtitle="Reusable cover letter bodies. Placeholders: {company} {role} {location} {date} {name} {email} {phone} {school}"
+        subtitle="Letter bodies from the greeting to the sign-off. The letter page adds your header, the date and the recipient. Placeholders: {company} {role} {location} {date} {name} {email} {phone} {school}"
         actions={
           <Button variant="primary" onClick={startNew}>
             New template

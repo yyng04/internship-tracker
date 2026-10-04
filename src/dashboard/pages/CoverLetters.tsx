@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/schema'
 import {
   addCoverLetter,
   assignCoverLetter,
+  EMPTY_PROFILE,
   deleteCoverLetter,
   getProfile,
   renderTemplate,
   updateCoverLetter,
 } from '../../db/repo'
 import { markdownToPlain } from '../../lib/markdown'
-import { companyLabel, copyText, cx, download, fmtDate, todayISO } from '../../lib/utils'
+import { companyLabel, copyText, cx, fmtDate, todayISO } from '../../lib/utils'
 import type { Application, CoverLetter, Template } from '../../types'
-import { MarkdownEditor } from '../components/MarkdownEditor'
+import { ListingDetails } from '../components/ListingDetails'
+import { LetterPreview } from '../letter/LetterPreview'
 import {
   Button,
   Card,
@@ -23,14 +25,11 @@ import {
   Modal,
   PageHeader,
   Select,
+  Textarea,
   confirmDialog,
 } from '../components/ui'
 
 const appLabel = (a: Application) => `${companyLabel(a.company)}: ${a.role}`
-
-function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cover-letter'
-}
 
 export function CoverLetters() {
   const { id } = useParams<{ id: string }>()
@@ -233,6 +232,11 @@ function LetterEditor({
   const [body, setBody] = useState(letter.body)
   const [saveState, setSaveState] = useState<'saved' | 'pending' | 'saving' | 'error'>('saved')
   const [copied, setCopied] = useState(false)
+  const linkedApp = letter.applicationId ? apps.find((a) => a.id === letter.applicationId) : undefined
+  // Open on the job's requirements when there are some to write against.
+  const [pane, setPane] = useState<'letter' | 'job'>(linkedApp?.description ? 'job' : 'letter')
+  const profile = useLiveQuery(() => getProfile(), [])
+  const textWrap = useRef<HTMLDivElement>(null)
   const lastSavedBody = useRef(letter.body)
   const latestBody = useRef(letter.body)
 
@@ -299,6 +303,24 @@ function LetterEditor({
     }
   }
 
+  // Grow the textarea with its content instead of scrolling inside it.
+  useEffect(() => {
+    const el = textWrap.current?.querySelector('textarea')
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [body])
+
+  // Save any pending edit first, so the print tab reads the current text.
+  const savePdf = async () => {
+    if (latestBody.current !== lastSavedBody.current) {
+      await updateCoverLetter(letter.id, { body: latestBody.current })
+      lastSavedBody.current = latestBody.current
+      setSaveState('saved')
+    }
+    window.open(`${location.href.split('#')[0]}#/letters/${letter.id}/print`, '_blank')
+  }
+
   const remove = async () => {
     if (!confirmDialog(`Delete "${letter.title || 'Untitled'}"? This cannot be undone.`)) return
     try {
@@ -309,8 +331,6 @@ function LetterEditor({
       setSaveState('error')
     }
   }
-
-  const linkedApp = letter.applicationId ? apps.find((a) => a.id === letter.applicationId) : undefined
 
   return (
     <div className="space-y-4">
@@ -333,14 +353,61 @@ function LetterEditor({
         </Field>
       </div>
 
-      <MarkdownEditor value={body} onChange={changeBody} placeholder="Write the cover letter in markdown." />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div ref={textWrap}>
+          <Textarea
+            rows={22}
+            value={body}
+            placeholder={'Dear Hiring Team,\n\nI am applying for...\n\nKind regards,\nYour name'}
+            onChange={(e) => changeBody(e.target.value)}
+            className="resize-none overflow-hidden text-sm leading-relaxed"
+            aria-label="Letter text"
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            Start at the greeting. Your name, contact details, the date and the recipient are added on the letter.
+            Leave a blank line between paragraphs. **bold**, *italic* and lines starting with "- " also work.
+          </p>
+        </div>
+
+        <div className="min-w-0">
+          <div className="mb-2 flex gap-1">
+            <Button size="sm" variant={pane === 'letter' ? 'primary' : 'ghost'} onClick={() => setPane('letter')}>
+              Letter
+            </Button>
+            <Button size="sm" variant={pane === 'job' ? 'primary' : 'ghost'} onClick={() => setPane('job')}>
+              Job requirements
+            </Button>
+          </div>
+          {pane === 'letter' ? (
+            <>
+              {profile && !profile.fullName && (
+                <p className="mb-2 text-xs text-zinc-500">
+                  The header uses your name and contact details from{' '}
+                  <Link to="/profile" className="underline">
+                    Profile
+                  </Link>
+                  .
+                </p>
+              )}
+              <LetterPreview body={body} profile={profile ?? EMPTY_PROFILE} application={linkedApp} />
+            </>
+          ) : (
+            <Card>
+              {linkedApp ? (
+                <ListingDetails description={linkedApp.description} compact />
+              ) : (
+                <p className="text-sm text-zinc-500">Link this letter to an application to see its requirements here.</p>
+              )}
+            </Card>
+          )}
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</Button>
-        <Button onClick={() => download(`${slugify(title)}.md`, body, 'text/markdown')}>Download .md</Button>
-        <Button onClick={() => download(`${slugify(title)}.txt`, markdownToPlain(body), 'text/plain')}>
-          Download .txt
+        <Button variant="primary" onClick={() => void savePdf()}>
+          Save as PDF
         </Button>
+        <Button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</Button>
         <Button variant="danger" onClick={remove}>
           Delete
         </Button>

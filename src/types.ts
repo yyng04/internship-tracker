@@ -79,6 +79,7 @@ export interface Template {
 export interface Profile {
   id: 'me' // singleton row
   fullName: string
+  headline: string // the line under the name on letters, as on the resume
   email: string
   phone: string
   linkedin: string

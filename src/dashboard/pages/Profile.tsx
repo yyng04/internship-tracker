@@ -9,8 +9,9 @@ import { FileDrop } from '../components/FileDrop'
 
 type TextKey = Exclude<keyof ProfileRow, 'id' | 'bullets'>
 
-const FIELDS: { key: TextKey; label: string; placeholder?: string; type?: string }[] = [
+const FIELDS: { key: TextKey; label: string; placeholder?: string; type?: string; hint?: string }[] = [
   { key: 'fullName', label: 'Full name', placeholder: 'Jane Tan' },
+  { key: 'headline', label: 'Headline', placeholder: 'Year 2, Computer Science and Business, NTU', hint: 'Shown under your name on cover letters.' },
   { key: 'email', label: 'Email', placeholder: 'jane@example.com', type: 'email' },
   { key: 'phone', label: 'Phone', placeholder: '+65 9123 4567', type: 'tel' },
   { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...', type: 'url' },
@@ -238,7 +239,7 @@ export function Profile() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {FIELDS.map((f) => (
-                <Field key={f.key} label={f.label}>
+                <Field key={f.key} label={f.label} hint={f.hint}>
                   <Input
                     type={f.type ?? 'text'}
                     value={profile[f.key]}
