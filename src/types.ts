@@ -108,6 +108,8 @@ export interface CapturedJob {
   location: string
   source: Source
   description?: JobDescription
+  /** True on a results page with no single listing open, where saving would record the search itself. */
+  looksLikeSearch?: boolean
 }
 
 /** Message the popup sends to the capture script it injects into the current tab. */

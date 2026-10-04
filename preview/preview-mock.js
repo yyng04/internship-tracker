@@ -14,6 +14,17 @@ const exampleJob = {
   },
 }
 
+// Add ?search to the popup's address to see how it handles a search results page.
+if (new URLSearchParams(location.search).has('search')) {
+  Object.assign(exampleJob, {
+    title: '75+ Summer Internship 2027 Jobs, Employment',
+    company: '',
+    url: 'https://sg.indeed.com/q-summer-internship-2027-jobs.html',
+    description: undefined,
+    looksLikeSearch: true,
+  })
+}
+
 globalThis.chrome = {
   tabs: {
     query: async () => [{ id: 1, url: exampleJob.url, title: exampleJob.title }],

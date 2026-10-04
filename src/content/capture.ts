@@ -28,10 +28,29 @@ function readDescription(ex: SiteExtractor): JobDescription | undefined {
   return undefined
 }
 
+/**
+ * Whether the address or title describes a list of jobs rather than one job, for example
+ * "/jobs?q=intern", "/jobs/search/" or a title such as "75+ Summer Internship Jobs".
+ */
+function looksLikeSearchPage(url: URL, title: string): boolean {
+  const path = url.pathname.toLowerCase()
+  const searchPath =
+    /(^|\/)(search|jobs|job-search|jobsearch|results|vacancies|openings|positions)\/?$/.test(path) ||
+    path.includes('/jobs/search') ||
+    path.includes('/q-')
+  const searchQuery = ['q', 'query', 'keywords', 'keyword', 'search'].some((k) => url.searchParams.has(k))
+  const countTitle = /\b\d[\d,]*\+?\s+(?:[\w-]+\s+){0,4}(jobs|roles|positions|openings|vacancies)\b/i.test(title)
+  return searchPath || searchQuery || countTitle
+}
+
 function capture(): CapturedJob {
   const url = new URL(location.href)
   const ex = extractors.find((e) => e.matches(url)) ?? generic
   const partial = ex.extract()
+  const description = readDescription(ex)
+  // A results page with one job open beside the list (LinkedIn, Indeed) yields that job's
+  // description, so only a page with no description and a search-like address or title counts.
+  const looksLikeSearch = !description && looksLikeSearchPage(url, document.title)
   // Strip tracking params from LinkedIn/Indeed URLs so the saved link is stable.
   for (const k of [...url.searchParams.keys()]) {
     if (/^(utm_|ref|refId|trk|tracking|from|src)/i.test(k)) url.searchParams.delete(k)
@@ -42,7 +61,8 @@ function capture(): CapturedJob {
     location: partial.location ?? '',
     source: partial.source ?? 'other',
     url: url.toString(),
-    description: readDescription(ex),
+    description,
+    looksLikeSearch,
   }
 }
 

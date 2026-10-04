@@ -6,7 +6,7 @@ import captureScript from '../content/capture.ts?script&iife'
 import { openDashboard, todayISO } from '../lib/utils'
 import { SOURCES, STATUSES, STATUS_LABELS, type CapturedJob, type JobDescription, type Source, type Status } from '../types'
 
-type Phase = 'loading' | 'form' | 'saved' | 'unsupported'
+type Phase = 'loading' | 'form' | 'saved' | 'unsupported' | 'search'
 
 /** "5 responsibilities · 6 requirements · 3 preferred", leaving out empty sections. */
 function describeCounts(d: JobDescription): string {
@@ -65,11 +65,12 @@ export function Popup() {
         await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [captureScript] })
         const captured = (await chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_JOB' })) as CapturedJob
         setJob({ ...captured, company: captured.company || companyFromUrl(captured.url) })
+        setPhase(captured.looksLikeSearch ? 'search' : 'form')
       } catch {
         // Some pages, such as the Chrome Web Store, refuse script injection.
         setJob({ title: tab.title ?? '', company: companyFromUrl(tab.url), url: tab.url, location: '', source: 'other' })
+        setPhase('form')
       }
-      setPhase('form')
     })()
   }, [])
 
@@ -120,6 +121,19 @@ export function Popup() {
             <p>Capture works on regular web pages. You can also add a role from the dashboard.</p>
             <button type="button" className="capture-primary" onClick={() => openDashboard()}>
               Open dashboard <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+        )}
+
+        {phase === 'search' && (
+          <div className="capture-state">
+            <h1>This looks like a list of jobs</h1>
+            <p>
+              Open one listing, then click the icon again. Saving from this page would record the search
+              results title as the role.
+            </p>
+            <button type="button" className="capture-secondary" onClick={() => setPhase('form')}>
+              Save this page anyway
             </button>
           </div>
         )}
