@@ -9,16 +9,16 @@ import { FileDrop } from '../components/FileDrop'
 
 type TextKey = Exclude<keyof ProfileRow, 'id' | 'bullets'>
 
-const FIELDS: { key: TextKey; label: string; placeholder?: string; type?: string; hint?: string }[] = [
-  { key: 'fullName', label: 'Full name', placeholder: 'Jane Tan' },
-  { key: 'headline', label: 'Headline', placeholder: 'Year 2, Computer Science and Business, NTU', hint: 'Shown under your name on cover letters.' },
-  { key: 'email', label: 'Email', placeholder: 'jane@example.com', type: 'email' },
-  { key: 'phone', label: 'Phone', placeholder: '+65 9123 4567', type: 'tel' },
-  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...', type: 'url' },
-  { key: 'github', label: 'GitHub', placeholder: 'https://github.com/...', type: 'url' },
-  { key: 'portfolio', label: 'Portfolio', placeholder: 'https://...', type: 'url' },
-  { key: 'school', label: 'School', placeholder: 'Nanyang Technological University' },
-  { key: 'gradYear', label: 'Graduation year', placeholder: '2027' },
+const FIELDS: { key: TextKey; label: string; type?: string; hint?: string }[] = [
+  { key: 'fullName', label: 'Full name' },
+  { key: 'headline', label: 'Headline', hint: 'Shown under your name on cover letters.' },
+  { key: 'email', label: 'Email', type: 'email' },
+  { key: 'phone', label: 'Phone', type: 'tel' },
+  { key: 'linkedin', label: 'LinkedIn', type: 'url' },
+  { key: 'github', label: 'GitHub', type: 'url' },
+  { key: 'portfolio', label: 'Portfolio', type: 'url' },
+  { key: 'school', label: 'School' },
+  { key: 'gradYear', label: 'Graduation year' },
 ]
 
 function fieldsEqual(a: ProfileRow, b: ProfileRow) {
@@ -243,7 +243,6 @@ export function Profile() {
                   <Input
                     type={f.type ?? 'text'}
                     value={profile[f.key]}
-                    placeholder={f.placeholder}
                     onChange={(e) => setField(f.key, e.target.value)}
                   />
                 </Field>
@@ -351,7 +350,6 @@ export function Profile() {
               <Textarea
                 aria-label="New reusable bullet"
                 value={newBullet}
-                placeholder="Built a React dashboard used by 200 students..."
                 onChange={(e) => setNewBullet(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
