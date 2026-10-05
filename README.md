@@ -2,6 +2,14 @@
 
 A Chrome and Brave extension for tracking internship applications, cover letters and your resume. Everything is stored locally in the browser (IndexedDB); nothing is sent anywhere.
 
+![The Kanban board with sample applications in each stage](docs/board.png)
+
+![The capture popup saving a job listing to the tracker](docs/capture-popup.png)
+
+![The cover letter editor beside the A4 letter preview](docs/cover-letter.png)
+
+The screenshots come from the local preview (`npm run preview`), which seeds sample data.
+
 ## Features
 
 - Board of applications by status (wishlist, applied, OA, interview, offer, rejected, withdrawn), with a table view
